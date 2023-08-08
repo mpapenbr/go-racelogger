@@ -1,0 +1,15 @@
+# This project was generated using a Cookiecutter template:
+#       https://github.com/notsatan/go-template
+
+cookiecutter_inputs:
+  project_name: "go-racelogger"
+  go_module_path: "github.com/mpapenbr/go-racelogger"
+  license_owner: "mpapenbr"
+  base_branch: "main"
+  contact_email: ""
+  project_description: "Racelogger for iRacelog project"
+  github_specific_features: "y"
+  use_codecov: "n"
+  use_precommit: "n"
+  go_version: "1.20"
+  license: "MIT"
