@@ -16,7 +16,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/mpapenbr/goirsdk/yaml"
+	"github.com/mpapenbr/go-racelogger/pkg/irsdk/yaml"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sys/windows"
 	"golang.org/x/text/encoding/charmap"

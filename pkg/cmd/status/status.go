@@ -3,16 +3,19 @@ package status
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
+	"github.com/mpapenbr/go-racelogger/pkg/util"
 
 	// irsdk "github.com/mpapenbr/goirsdk"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
 
 	"github.com/spf13/cobra"
 )
+
+var ErrSimulationNotRunning = errors.New("iRacing Simulation not running")
+var ErrVarDataRetrieval = errors.New("could not get variable data from iRacing")
 
 func NewStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -23,7 +26,7 @@ func NewStatusCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&config.WaitForServices,
+	cmd.Flags().StringVar(&config.WaitForServices,
 		"wait",
 		"60s",
 		"Wait for running iRacing Sim")
@@ -31,16 +34,14 @@ func NewStatusCmd() *cobra.Command {
 	return cmd
 }
 
-var ErrSimulationNotRunning = errors.New("iRacing Simulation not running")
-var ErrVarDataRetrieval = errors.New("could not get variable data from iRacing")
-
 func checkIracingStatus() error {
-	if waitForSimulation() {
+	if util.WaitForSimulation() {
 		log.Error(ErrSimulationNotRunning.Error())
-		return ErrSimulationNotRunning
+		return nil
 	}
 
 	api := irsdk.NewIrsdk()
+	defer api.Close()
 
 	if !api.GetData() {
 		log.Error(ErrVarDataRetrieval.Error())
@@ -61,26 +62,4 @@ func checkIracingStatus() error {
 		return err
 	}
 	return nil
-}
-
-func waitForSimulation() bool {
-	timeout, err := time.ParseDuration(config.WaitForServices)
-	if err != nil {
-		log.Warn("Invalid duration value. Setting default 60s", log.ErrorField(err))
-		timeout = 60 * time.Second
-	}
-
-	log.Debug("Using timout ", log.String("timeout", timeout.String()))
-
-	log.Info("Waiting for iRacing Simulation")
-	deadline := time.Now().Add(timeout)
-	goon := time.Now().Before(deadline)
-	for goon {
-		if irsdk.CheckIfSimIsRunning() {
-			return true
-		}
-		time.Sleep(time.Second * 2)
-		goon = time.Now().Before(deadline)
-	}
-	return false
 }

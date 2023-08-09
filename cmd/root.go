@@ -55,6 +55,7 @@ func init() {
 		"config file (default is $HOME/.racelogger.yml)")
 
 	rootCmd.PersistentFlags().StringVar(&config.URL, "url", "", "URL of the backend WAMP server")
+	rootCmd.PersistentFlags().StringVar(&config.Realm, "realm", "racelog", "Realm for racelog endpoints")
 
 	// add commands here
 	// e.g. rootCmd.AddCommand(sampleCmd.NewSampleCmd())

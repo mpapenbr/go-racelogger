@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gammazero/nexus/v3/stdlog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -135,6 +136,10 @@ func ResetDefault(l *Logger) {
 	Debug = std.Debug
 }
 
+func StdLogger(l *Logger, lvl Level) (stdlog.StdLog, error) {
+	return zap.NewStdLogAt(l.l, lvl)
+}
+
 var std = New(os.Stderr, InfoLevel, WithCaller(true), AddCallerSkip(1))
 
 func Default() *Logger {
@@ -223,6 +228,10 @@ func ParseLevel(levelStr string) (Level, error) {
 
 func (l *Logger) Sync() error {
 	return l.l.Sync()
+}
+
+func (l *Logger) ZapLogger() *zap.Logger {
+	return l.l
 }
 
 func Sync() error {
