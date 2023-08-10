@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/mpapenbr/go-racelogger/internal/processor"
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
@@ -23,6 +25,9 @@ import (
 	"golang.org/x/exp/slices"
 	goyaml "gopkg.in/yaml.v3"
 )
+
+// this key is used to store the RaceLoggerContextData in the context.Context
+const RaceloggerContextValue = "ctx.racelogger"
 
 type EventKeyFunc func(*yaml.IrsdkYaml) string
 type Config struct {
@@ -39,6 +44,10 @@ type Racelogger struct {
 	dataprovider *wamp.DataProviderClient
 	simIsRunning bool
 	config       *Config
+	racelogCtx   context.Context
+}
+type RacelogContextData struct {
+	rl *Racelogger
 }
 
 // TODO: Define this in service-manager
@@ -118,13 +127,23 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 		EventInfo: *eventInfo,
 		EventKey:  r.eventKey,
 		TrackInfo: *trackInfo,
-		Manifests: model.Manifests{},
+		Manifests: model.Manifests{
+			Session: processor.SessionManifest(),
+		},
 	}
-	return r.dataprovider.RegisterProvider(req)
-
+	err = r.dataprovider.RegisterProvider(req)
+	if err != nil {
+		return err
+	}
+	r.setupDriverChangeDetector(time.Second)
+	r.setupMainLoop()
+	return nil
 }
+
 func (r *Racelogger) UnregisterProvider() {
-	r.dataprovider.UnregisterProvider(r.eventKey)
+	if err := r.dataprovider.UnregisterProvider(r.eventKey); err != nil {
+		log.Warn("Could not unregister event", log.String("eventKey", r.eventKey), log.ErrorField(err))
+	}
 }
 
 func (r *Racelogger) init() {
@@ -139,7 +158,10 @@ func (r *Racelogger) init() {
 		}
 	}
 	log.Debug("Telemetry data is available")
-	r.setupDriverChangeDetector(time.Second)
+	// TODO: may be obsolete
+	r.racelogCtx = context.WithValue(r.config.ctx, RaceloggerContextValue, &RacelogContextData{
+		rl: r,
+	})
 
 }
 
@@ -163,7 +185,7 @@ func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (*model.EventDataIn
 		Sectors:               r.convertSectors(irYaml.SplitTimeInfo.Sectors),
 		Sessions:              r.convertSessions(irYaml.SessionInfo.Sessions),
 
-		RaceloggerVersion: version.Version, // TODO
+		RaceloggerVersion: version.Version, // TODO: verify version setup by build
 	}
 	return &ret, nil
 }
@@ -322,6 +344,11 @@ func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 
 func (r *Racelogger) setupMainLoop() {
 
+	stateChannel := make(chan model.StateData, 2)
+	proc := processor.NewProcessor(r.api, stateChannel)
+	// sessionProc := processor.NewSessionProc(r.api, stateChannel)
+	// r.processStateChannel(stateChannel)
+	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)
 	mainLoop := func(ctx context.Context) {
 		for {
 			select {
@@ -334,11 +361,32 @@ func (r *Racelogger) setupMainLoop() {
 					time.Sleep(time.Second)
 					continue
 				}
-				r.api.GetData()
+				if r.api.GetData() {
+					proc.Process()
+				}
+				log.Debug("end of loop")
 				time.Sleep(time.Second)
 			}
 		}
 	}
 
 	go mainLoop(r.config.ctx)
+}
+
+func (r *Racelogger) processStateChannel(stateChannel chan model.StateData) {
+	handleChannelMessages := func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Debug("processStateChannel recieved ctx.Done")
+				return
+			case msg := <-stateChannel:
+				{
+					log.Debug("recieved stateChannel msg", log.Any("msg", msg))
+				}
+
+			}
+		}
+	}
+	go handleChannelMessages(r.config.ctx)
 }
