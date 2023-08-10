@@ -11,7 +11,7 @@ var GitCommit string
 
 // Version returns the main version number that is being run at the moment.
 // Note: will be replaced by goreleaser
-var Version = "0.0.0-DEV"
+var Version = "1.0.0-DEV"
 
 // BuildDate returns the date the binary was built
 // Note: will be replaced by goreleaser

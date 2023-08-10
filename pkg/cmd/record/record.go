@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/mpapenbr/go-racelogger/internal"
 	"github.com/mpapenbr/go-racelogger/log"
@@ -15,6 +14,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var eventName string
+var eventDescription string
+
 func NewRecordCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "record",
@@ -23,6 +25,17 @@ func NewRecordCmd() *cobra.Command {
 			return recordEvent()
 		},
 	}
+
+	cmd.Flags().StringVarP(&eventName,
+		"name",
+		"n",
+		"",
+		"Event name")
+	cmd.Flags().StringVarP(&eventDescription,
+		"description",
+		"d",
+		"",
+		"Event description")
 
 	cmd.Flags().StringVar(&config.WaitForServices,
 		"wait",
@@ -66,7 +79,7 @@ func recordEvent() error {
 	// stdLogger.Printf("something\n")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	r := internal.NewRaceLogger(ctx, cancel, "test")
+	r := internal.NewRaceLogger(internal.WithContext(ctx, cancel))
 	defer r.Close()
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
@@ -75,14 +88,18 @@ func recordEvent() error {
 		cancel()
 	}()
 
+	log.Debug("Register event")
+
+	r.RegisterProvider(eventName, eventDescription)
+
 	log.Debug("Waiting for termination")
 	select {
 	case <-sigChan:
 		{
 			log.Debug("interrupt signaled. Terminating")
 			cancel()
-			log.Debug("Waiting some seconds")
-			time.Sleep(time.Second * 3)
+			// log.Debug("Waiting some seconds")
+			// time.Sleep(time.Second * 2)
 		}
 	case <-ctx.Done():
 		{
@@ -90,6 +107,8 @@ func recordEvent() error {
 		}
 	}
 
+	log.Debug("Unregister event")
+	r.UnregisterProvider()
 	// log.Debug("Got signal ", log.Any("signal", v))
 	// wampHandler.shutdown()
 	log.Info("Server terminated")
