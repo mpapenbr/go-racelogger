@@ -82,7 +82,15 @@ func (p *CarProc) Process() {
 			p.carLookup[idx] = carData
 		}
 		carData.Process(p.api)
+		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
+			// compute times for car
+			// compute speed for car
+			// call postProcess for carData
+		}
+
 	}
+
+	// at this point all cars have been processed
 
 }
 
@@ -93,6 +101,9 @@ func (p *CarProc) getProcessableCarIdxs() []int {
 
 // returns []*CarData in current race order
 func (p *CarProc) getInCurrentRaceOrder() []*CarData {
+	if len(p.carLookup) == 0 {
+		return []*CarData{}
+	}
 	carIdxs := p.getProcessableCarIdxs()
 	work := make([]*CarData, len(carIdxs))
 	for i, idx := range carIdxs {

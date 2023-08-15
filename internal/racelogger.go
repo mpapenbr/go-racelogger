@@ -309,6 +309,7 @@ func (r *Racelogger) setupMainLoop() {
 	speedmapChannel := make(chan model.SpeedmapData, 1)
 	carDataChannel := make(chan model.CarData, 1)
 
+	recordingDoneChannel := make(chan struct{}, 1)
 	proc := processor.NewProcessor(
 		r.api,
 		stateChannel,
@@ -316,7 +317,9 @@ func (r *Racelogger) setupMainLoop() {
 		carDataChannel,
 		processor.WithGlobalProcessingData(r.globalData),
 		processor.WithChunkSize(10),
+		processor.WithRecordingDoneChannel(recordingDoneChannel),
 	)
+
 	// sessionProc := processor.NewSessionProc(r.api, stateChannel)
 	// r.processStateChannel(stateChannel)
 	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)
@@ -329,6 +332,13 @@ func (r *Racelogger) setupMainLoop() {
 			case <-ctx.Done():
 				log.Debug("mainLoop recieved ctx.Done")
 				return
+			case _, more := <-recordingDoneChannel:
+				log.Debug("mainLoop recieved recordingDoneChannel", log.Bool("more", more))
+				if !more {
+					log.Info("Recording done.")
+					r.config.cancel()
+					return
+				}
 			default:
 				if !r.simIsRunning {
 					log.Warn("Sim is not running. Should not happen", log.String("method", "mainLoop"))

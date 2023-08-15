@@ -74,11 +74,11 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name ".racelogger" (without extension).
+		// Search config in home directory with name "racelogger" (without extension).
 		viper.AddConfigPath(home)
 		viper.AddConfigPath(".")
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".racelogger")
+		viper.SetConfigName("racelogger")
 	}
 
 	viper.SetEnvPrefix(envPrefix)

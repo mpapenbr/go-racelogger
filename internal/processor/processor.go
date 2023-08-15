@@ -22,6 +22,7 @@ type Options struct {
 	CarDataPublishInterval  time.Duration
 	ChunkSize               int // speedmap chunk size
 	GlobalProcessingData    GlobalProcessingData
+	RecordingDoneChannel    chan struct{}
 }
 
 func defaultOptions() *Options {
@@ -63,6 +64,12 @@ func WithGlobalProcessingData(gpd GlobalProcessingData) OptionsFunc {
 	}
 }
 
+func WithRecordingDoneChannel(c chan struct{}) OptionsFunc {
+	return func(o *Options) {
+		o.RecordingDoneChannel = c
+	}
+}
+
 type Processor struct {
 	api                  *irsdk.Irsdk
 	options              *Options
@@ -70,14 +77,15 @@ type Processor struct {
 	lastTimeSendSpeedmap time.Time
 	lastTimeSendCardata  time.Time
 	sessionProc          SessionProc
-	carProc              CarProc
+	carProc              *CarProc
 	speedmapProc         SpeedmapProc
-	carDriverProc        CarDriverProc
-	raceProc             RaceProc
+	carDriverProc        *CarDriverProc
+	raceProc             *RaceProc
 	lastDriverInfo       yaml.DriverInfo
 	stateOutput          chan model.StateData
 	speedmapOutput       chan model.SpeedmapData
 	carDataOutput        chan model.CarData
+	recordingDoneChannel chan struct{}
 }
 
 func NewProcessor(
@@ -92,9 +100,14 @@ func NewProcessor(
 		o(opts)
 	}
 
-	carDriverProc := CarDriverProc{api: api, output: cardataOutput}
-	carProc := CarProc{api: api}
-	raceProc := RaceProc{api: api, carProc: &carProc}
+	carDriverProc := NewCarDriverProc(api, cardataOutput)
+	carProc := NewCarProc(api, &opts.GlobalProcessingData, carDriverProc)
+	raceProc := NewRaceProc(api, carProc, func() {
+		if opts.RecordingDoneChannel != nil {
+			log.Debug("Signaling recording done")
+			close(opts.RecordingDoneChannel)
+		}
+	})
 	return &Processor{
 		api:               api,
 		options:           opts,

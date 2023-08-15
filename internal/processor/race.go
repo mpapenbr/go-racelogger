@@ -14,10 +14,11 @@ type raceState interface {
 }
 
 type RaceProc struct {
-	api             *irsdk.Irsdk
-	currentState    raceState
-	cooldownEntered time.Time
-	carProc         *CarProc
+	api              *irsdk.Irsdk
+	currentState     raceState
+	cooldownEntered  time.Time
+	carProc          *CarProc
+	raceDoneCallback func()
 }
 
 type RaceInvalid struct{}
@@ -43,7 +44,7 @@ func (rr *RaceRun) Exit()  { log.Info("Leaving state: RaceRun") }
 // as long as we don't dectect the checkered flag we stay in this state
 func (rr *RaceRun) Update(rp *RaceProc) {
 	sessionSate := justValue(rp.api.GetIntValue("SessionState")).(int32)
-	if sessionSate == int32(irsdk.StateRacing) {
+	if sessionSate == int32(irsdk.StateCheckered) {
 		rp.setState(&RaceFinishing{})
 		return
 	}
@@ -62,7 +63,7 @@ func (rf *RaceFinishing) Update(rp *RaceProc) {
 		rp.setState(&RaceCooldown{})
 		return
 	}
-	// call carproc here
+	rp.carProc.Process()
 
 }
 
@@ -75,7 +76,8 @@ func (rc *RaceCooldown) Update(rp *RaceProc) {
 		rp.setState(&RaceDone{})
 		return
 	}
-	// call carproc here
+	rp.carProc.Process()
+
 }
 
 type RaceDone struct{}
@@ -86,9 +88,9 @@ func (rd *RaceDone) Update(rp *RaceProc) {
 	rp.onRaceDone()
 }
 
-func NewRaceProc(api *irsdk.Irsdk, carProc *CarProc) *RaceProc {
-	ret := RaceProc{api: api, carProc: carProc}
-	ret.setState(&RaceInvalid{})
+func NewRaceProc(api *irsdk.Irsdk, carProc *CarProc, raceDoneCallback func()) *RaceProc {
+	ret := RaceProc{api: api, carProc: carProc, raceDoneCallback: raceDoneCallback}
+	ret.currentState = &RaceInvalid{}
 	return &ret
 }
 
@@ -104,6 +106,9 @@ func (rp *RaceProc) markEnterCooldown() {
 
 func (rp *RaceProc) onRaceDone() {
 	// if handler registered, do something with it
+	if rp.raceDoneCallback != nil {
+		rp.raceDoneCallback()
+	}
 }
 
 func (rp *RaceProc) Process() {

@@ -13,6 +13,13 @@ type carState interface {
 	Update(cd *CarData, cw *carWorkData)
 }
 
+const (
+	CarStateOut  = "OUT"
+	CarStateRun  = "RUN"
+	CarStatePit  = "PIT"
+	CarStateSlow = "SLOW"
+)
+
 type carInit struct{}
 
 func (ci *carInit) Enter() { log.Info("Entering state: carInit") }
@@ -20,17 +27,17 @@ func (ci *carInit) Exit()  { log.Info("Leaving state: carInit") }
 func (ci *carInit) Update(cd *CarData, cw *carWorkData) {
 	cd.copyWorkData(cw)
 	if cw.trackPos == -1 {
-		cd.state = "OUT"
+		cd.state = CarStateOut
 		cd.setState(&carOut{})
 		// cd.prepareMsgData()
 		return
 	}
 	if cw.pit {
-		cd.state = "PIT"
+		cd.state = CarStatePit
 		cd.stintLap = 0
 		cd.setState(&carPit{})
 	} else {
-		cd.state = "RUN"
+		cd.state = CarStateRun
 		cd.setState(&carRun{})
 		return
 	}
@@ -44,13 +51,13 @@ func (cr *carRun) Enter() { log.Info("Entering state: carRun") }
 func (cr *carRun) Exit()  { log.Info("Leaving state: carRun") }
 func (cr *carRun) Update(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
-		cd.state = "OUT"
+		cd.state = CarStateOut
 		cd.setState(&carOut{})
 		return
 	}
 	cd.copyWorkData(cw)
 	if cw.pit {
-		cd.state = "PIT"
+		cd.state = CarStatePit
 		cd.pitstops += 1
 		cd.setState(&carPit{})
 		// call pit boundary monitor with entry
@@ -67,13 +74,13 @@ func (cp *carPit) Exit()  { log.Info("Leaving state: carPit") }
 func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 
 	if cw.trackPos == -1 {
-		cd.state = "OUT"
+		cd.state = CarStateOut
 		cd.setState(&carOut{})
 		return
 	}
 	cd.copyWorkData(cw)
 	if cw.pit == false {
-		cd.state = "RUN"
+		cd.state = CarStateRun
 		cd.setState(&carRun{})
 		// call pit boundary monitor with exit
 		return
@@ -142,7 +149,6 @@ func (cd *CarData) init() {
 func (cd *CarData) Process(api *irsdk.Irsdk) {
 
 	cw := cd.extractIrsdkData(api)
-	log.Debug("Dummy", log.Any("carWorkData", cw))
 	cd.currentState.Update(cd, cw)
 	cd.prepareMsgData()
 }
@@ -172,7 +178,7 @@ func (cd *CarData) prepareMsgData() {
 	cd.msgData["gap"] = cd.gap
 	cd.msgData["last"] = cd.currentBest
 	cd.msgData["best"] = cd.currentBest
-	cd.msgData["state"] = cd.currentState
+	cd.msgData["state"] = cd.state
 
 	cd.msgData["userName"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).UserName
 	cd.msgData["teamName"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).TeamName
@@ -188,7 +194,7 @@ func (cd *CarData) prepareMsgData() {
 func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {
 	cw := carWorkData{}
 	cw.carIdx = cd.carIdx
-	cw.trackPos = justValue(api.GetValue("CarIdxLapDistPct")).([]float64)[cd.carIdx]
+	cw.trackPos = float64(justValue(api.GetValue("CarIdxLapDistPct")).([]float32)[cd.carIdx])
 	cw.pos = justValue(api.GetValue("CarIdxPosition")).([]int32)[cd.carIdx]
 	cw.pic = justValue(api.GetValue("CarIdxClassPosition")).([]int32)[cd.carIdx]
 	cw.lap = justValue(api.GetValue("CarIdxLap")).([]int32)[cd.carIdx]
