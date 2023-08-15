@@ -84,6 +84,26 @@ func (dpc *DataProviderClient) PublishCarData(eventKey string, carData *model.Ca
 	}
 
 }
+func (dpc *DataProviderClient) PublishCarDataFromChannel(eventKey string, rcv chan model.CarData) {
+
+	go func() {
+		for {
+			s, more := <-rcv
+			err := dpc.client.Publish(fmt.Sprintf("racelog.public.live.cardata.%s", eventKey), nil, wamp.List{s}, nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// fmt.Printf("chanValue: %v more: %v\n", s.Timestamp, more)
+			// time.Sleep(100 * time.Millisecond)
+			if !more {
+				fmt.Println("closed channel signaled")
+				return
+			}
+		}
+	}()
+
+}
+
 func (dpc *DataProviderClient) PublishDriverData(eventKey string, driverData *yaml.DriverInfo) {
 
 	err := dpc.client.Publish(fmt.Sprintf("racelog.public.live.driverdata.%s", eventKey), nil, wamp.List{driverData}, nil)

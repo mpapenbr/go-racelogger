@@ -80,6 +80,7 @@ type Drivers struct {
 	CarClassMaxFuelPct      string  `yaml:"CarClassMaxFuelPct" json:"CarClassMaxFuelPct"`
 	CarClassPowerAdjust     string  `yaml:"CarClassPowerAdjust" json:"CarClassPowerAdjust"`
 	CarClassRelSpeed        int     `yaml:"CarClassRelSpeed" json:"CarClassRelSpeed"`
+	CarClassShortName       string  `yaml:"CarClassShortName" json:"CarClassShortName"`
 	CarClassWeightPenalty   string  `yaml:"CarClassWeightPenalty" json:"CarClassWeightPenalty"`
 	CarDesignStr            string  `yaml:"CarDesignStr" json:"CarDesignStr"`
 	CarID                   int     `yaml:"CarID" json:"CarID"`

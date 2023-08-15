@@ -4,11 +4,8 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"reflect"
-	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,12 +19,8 @@ import (
 	"github.com/mpapenbr/go-racelogger/version"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/service"
-	"golang.org/x/exp/slices"
 	goyaml "gopkg.in/yaml.v3"
 )
-
-// this key is used to store the RaceLoggerContextData in the context.Context
-const RaceloggerContextValue = "ctx.racelogger"
 
 type EventKeyFunc func(*yaml.IrsdkYaml) string
 type Config struct {
@@ -44,10 +37,7 @@ type Racelogger struct {
 	dataprovider *wamp.DataProviderClient
 	simIsRunning bool
 	config       *Config
-	racelogCtx   context.Context
-}
-type RacelogContextData struct {
-	rl *Racelogger
+	globalData   processor.GlobalProcessingData
 }
 
 // TODO: Define this in service-manager
@@ -55,8 +45,6 @@ type EventSession struct {
 	Num  int    `json:"num"`
 	Name string `json:"name"`
 }
-
-var ErrUnknownValueWithUnit = errors.New("Unknown value with unit format")
 
 func defaultConfig() *Config {
 	return &Config{
@@ -123,12 +111,15 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 	}
 
 	r.eventKey = r.config.eventKeyFunc(irYaml)
+	r.globalData = processor.GlobalProcessingData{TrackInfo: *trackInfo, EventDataInfo: *eventInfo}
+
 	req := service.RegisterEventRequest{
 		EventInfo: *eventInfo,
 		EventKey:  r.eventKey,
 		TrackInfo: *trackInfo,
 		Manifests: model.Manifests{
 			Session: processor.SessionManifest(),
+			Car:     processor.CarManifest(&r.globalData),
 		},
 	}
 	err = r.dataprovider.RegisterProvider(req)
@@ -159,16 +150,13 @@ func (r *Racelogger) init() {
 	}
 	log.Debug("Telemetry data is available")
 	// TODO: may be obsolete
-	r.racelogCtx = context.WithValue(r.config.ctx, RaceloggerContextValue, &RacelogContextData{
-		rl: r,
-	})
 
 }
 
 func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (*model.EventDataInfo, error) {
 
-	pitSpeed, _ := r.getMetricUnit(irYaml.WeekendInfo.TrackPitSpeedLimit)
-	trackLength, _ := r.getMetricUnit(irYaml.WeekendInfo.TrackLength)
+	pitSpeed, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackPitSpeedLimit)
+	trackLength, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackLength)
 	ret := model.EventDataInfo{
 		TrackId:               irYaml.WeekendInfo.TrackID,
 		TrackDisplayName:      irYaml.WeekendInfo.TrackDisplayName,
@@ -192,7 +180,7 @@ func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (*model.EventDataIn
 
 func (r *Racelogger) createTrackInfo(irYaml *yaml.IrsdkYaml) (*model.TrackInfo, error) {
 
-	trackLength, _ := r.getMetricUnit(irYaml.WeekendInfo.TrackLength)
+	trackLength, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackLength)
 	ret := model.TrackInfo{
 		ID:        irYaml.WeekendInfo.TrackID,
 		Name:      irYaml.WeekendInfo.TrackDisplayName,
@@ -202,33 +190,6 @@ func (r *Racelogger) createTrackInfo(irYaml *yaml.IrsdkYaml) (*model.TrackInfo, 
 		Sectors:   r.convertSectors(irYaml.SplitTimeInfo.Sectors),
 	}
 	return &ret, nil
-}
-
-func (r *Racelogger) getMetricUnit(s string) (float64, error) {
-	re := regexp.MustCompile("(?P<value>[0-9.]+)\\s+(?P<unit>.*)")
-
-	if !re.Match([]byte(s)) {
-		log.Error("invalid data with unit", log.String("data", s))
-		return 0, ErrUnknownValueWithUnit
-	}
-	matches := re.FindStringSubmatch(s)
-	value := matches[re.SubexpIndex("value")]
-	unit := matches[re.SubexpIndex("unit")]
-	if f, err := strconv.ParseFloat(value, 64); err != nil {
-
-		if slices.Contains([]string{"m", "km", "kph", "C"}, unit) {
-			return f, nil
-		}
-		switch unit {
-		case "mi":
-			return f * 1.60934, nil
-		default:
-			return f, nil
-		}
-
-	} else {
-		return 0, err
-	}
 }
 
 func (r *Racelogger) convertSectors(sectors []yaml.Sectors) []model.Sector {
@@ -345,10 +306,23 @@ func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 func (r *Racelogger) setupMainLoop() {
 
 	stateChannel := make(chan model.StateData, 2)
-	proc := processor.NewProcessor(r.api, stateChannel)
+	speedmapChannel := make(chan model.SpeedmapData, 1)
+	carDataChannel := make(chan model.CarData, 1)
+
+	proc := processor.NewProcessor(
+		r.api,
+		stateChannel,
+		speedmapChannel,
+		carDataChannel,
+		processor.WithGlobalProcessingData(r.globalData),
+		processor.WithChunkSize(10),
+	)
 	// sessionProc := processor.NewSessionProc(r.api, stateChannel)
 	// r.processStateChannel(stateChannel)
 	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)
+	r.dataprovider.PublishSpeedmapDataFromChannel(r.eventKey, speedmapChannel)
+	r.dataprovider.PublishCarDataFromChannel(r.eventKey, carDataChannel)
+
 	mainLoop := func(ctx context.Context) {
 		for {
 			select {
@@ -361,8 +335,10 @@ func (r *Racelogger) setupMainLoop() {
 					time.Sleep(time.Second)
 					continue
 				}
+				startProc := time.Now()
 				if r.api.GetData() {
 					proc.Process()
+					log.Debug("Processed data", log.Duration("duration", time.Since(startProc)))
 				}
 				log.Debug("end of loop")
 				time.Sleep(time.Second)

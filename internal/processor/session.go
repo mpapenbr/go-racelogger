@@ -45,31 +45,3 @@ func (s *SessionProc) CreateOutput() GenericMessage {
 	return msg
 
 }
-
-func computeFlagState(state int32, flags int64) string {
-	if state == int32(irsdk.StateRacing) {
-		if flags&int64(irsdk.FlagStartHidden) == int64(irsdk.FlagStartHidden) {
-			return "GREEN"
-		} else if flags>>16&int64(irsdk.FlagGreen) == int64(irsdk.FlagGreen) {
-			return "GREEN"
-		} else if flags>>16&int64(irsdk.FlagYello) == int64(irsdk.FlagYello) {
-			return "YELLOW"
-		} else if flags>>16&int64(irsdk.FlagCheckered) == int64(irsdk.FlagCheckered) {
-			return "CHECKERED"
-		} else if flags>>16&int64(irsdk.FlagWhite) == int64(irsdk.FlagWhite) {
-			return "WHITE"
-		}
-	} else if state == int32(irsdk.StateCheckered) {
-		return "CHECKERED"
-	} else if state == int32(irsdk.StateCoolDown) {
-		return "CHECKERED"
-	} else if state == int32(irsdk.StateGetInCar) {
-		return "PREP"
-	} else if state == int32(irsdk.StateParadeLaps) {
-		return "PARADE"
-	} else if state == int32(irsdk.StateInvalid) {
-		return "INVALID"
-	}
-	return "NONE"
-
-}
