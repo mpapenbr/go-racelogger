@@ -21,14 +21,14 @@ type CarDriverProc struct {
 }
 
 func NewCarDriverProc(api *irsdk.Irsdk, output chan model.CarData) *CarDriverProc {
-	y, _ := api.GetYaml()
-	return newCarDriverProcInternal(api, output, y)
+
+	return newCarDriverProcInternal(api, output)
 }
 
 // use this for testing with custom yaml content
-func newCarDriverProcInternal(api *irsdk.Irsdk, output chan model.CarData, y *yaml.IrsdkYaml) *CarDriverProc {
+func newCarDriverProcInternal(api *irsdk.Irsdk, output chan model.CarData) *CarDriverProc {
 	ret := CarDriverProc{api: api, output: output}
-	ret.init(y)
+	ret.init(api.GetLatestYaml())
 	return &ret
 }
 

@@ -2,9 +2,13 @@ package processor
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
+	"github.com/mpapenbr/go-racelogger/pkg/irsdk/yaml"
 	"golang.org/x/exp/slices"
 )
 
@@ -18,9 +22,13 @@ type CarProc struct {
 	// minimum distance a car has to move to be considered valid
 	minMoveDistPct       float64
 	winnerCrossedTheLine bool
+	prevSessionTime      float64   // used for computing speed/distance
+	prevLapDistPct       []float32 // data from previous iteration (CarIdxLapDistPct)
 	carLookup            map[int]*CarData
-	carDriverProc        *CarDriverProc
-	pitBoundaryProc      *PitBoundaryProc
+	lastStandingsIR      []yaml.ResultsPositions
+
+	carDriverProc   *CarDriverProc
+	pitBoundaryProc *PitBoundaryProc
 }
 
 var baseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
@@ -86,7 +94,7 @@ func (p *CarProc) Process() {
 			carData = NewCarData(int32(idx), p.carDriverProc, p.pitBoundaryProc, p.gpd)
 			p.carLookup[idx] = carData
 		}
-		carData.Process(p.api)
+		carData.PreProcess(p.api)
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
 			// compute times for car
 			// compute speed for car
@@ -96,11 +104,46 @@ func (p *CarProc) Process() {
 	}
 
 	// at this point all cars have been processed
+	y := p.api.GetLatestYaml()
+	sessionNum := justValue(p.api.GetIntValue("SessionNum")).(int32)
+	curStandingsIR := y.SessionInfo.Sessions[sessionNum].ResultsPositions
+	if curStandingsIR != nil && !reflect.DeepEqual(curStandingsIR, p.lastStandingsIR) {
+		log.Info("New standings available")
+		fmt.Printf("Standings-Delta: %v\n", cmp.Diff(curStandingsIR, p.lastStandingsIR))
+		p.processStandings(curStandingsIR)
+		// standings changed, update
+		p.lastStandingsIR = curStandingsIR
+
+	}
+
+	// copy data for next iteration
+	p.lastSessionTime = currentTime
+	p.prevLapDistPct = make([]float32, len(justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32)))
+	copy(p.prevLapDistPct, justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32))
 
 }
 
+func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
+	// Note: IR-standings are provided with a little delay after cars crossed the line
+
+	for _, st := range curStandingsIR {
+		work := p.carLookup[st.CarIdx]
+		if work == nil {
+			// rare case when reconnecting to a session
+			work = NewCarData(int32(st.CarIdx), p.carDriverProc, p.pitBoundaryProc, p.gpd)
+			p.carLookup[st.CarIdx] = work
+		}
+		work.pos = int(st.Position)
+		work.pic = int(st.ClassPosition)
+		work.gap = st.Time
+		work.bestLap = st.FastestTime
+		work.lastLap = st.LastTime
+	}
+	// TODO: mark laps as ob,pb,cb
+}
+
 func (p *CarProc) getProcessableCarIdxs() []int {
-	y, _ := p.api.GetYaml()
+	y := p.api.GetLatestYaml()
 	return getProcessableCarIdxs(y.DriverInfo.Drivers)
 }
 

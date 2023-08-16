@@ -135,6 +135,7 @@ func (irsdk *Irsdk) GetData() bool {
 
 	copy(irsdk.latestVarBuffer, irsdk.sharedMem[latestBuf.BufOffset:latestBuf.BufOffset+irsdk.hdr.BufLen])
 	copy(irsdk.latestYamlBuffer, irsdk.sharedMem[irsdk.hdr.SessionInfoOffset:irsdk.hdr.SessionInfoOffset+irsdk.hdr.SessionInfoLen])
+	irsdk.GetYaml()
 	return true
 }
 
@@ -144,6 +145,10 @@ func (irsdk *Irsdk) GetYaml() (*yaml.IrsdkYaml, error) {
 		return nil, err
 	}
 	return &irsdk.irsdkYaml, nil
+}
+
+func (irsdk *Irsdk) GetLatestYaml() *yaml.IrsdkYaml {
+	return &irsdk.irsdkYaml
 }
 
 //nolint:errcheck // by design

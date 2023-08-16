@@ -307,6 +307,7 @@ func (r *Racelogger) setupMainLoop() {
 	r.dataprovider.PublishCarDataFromChannel(r.eventKey, carDataChannel)
 
 	mainLoop := func(ctx context.Context) {
+		durations := []time.Duration{}
 		for {
 			select {
 			case <-ctx.Done():
@@ -325,13 +326,33 @@ func (r *Racelogger) setupMainLoop() {
 					time.Sleep(time.Second)
 					continue
 				}
-				startProc := time.Now()
 				if r.api.GetData() {
+					startProc := time.Now()
 					proc.Process()
-					log.Debug("Processed data", log.Duration("duration", time.Since(startProc)))
+					durations = append(durations, time.Since(startProc))
+					// log.Debug("Processed data", log.Duration("duration", time.Since(startProc)))
+					if len(durations) == 120 {
+						min := time.Duration(^uint64(0) >> 1)
+						// set max to max int64
+						max := time.Duration(0)
+						sum := int64(0)
+						for _, v := range durations {
+							if v < min {
+								min = v
+							}
+							if v > max {
+								max = v
+							}
+							sum += v.Nanoseconds()
+						}
+
+						log.Debug("Processed data", log.Duration("min", min), log.Duration("max", max), log.Duration("avg", time.Duration(sum/int64(len(durations)))))
+						durations = []time.Duration{}
+
+					}
 				}
-				log.Debug("end of loop")
-				time.Sleep(time.Second)
+				// log.Debug("end of loop")
+				// time.Sleep(time.Second)
 			}
 		}
 	}

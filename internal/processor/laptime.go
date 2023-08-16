@@ -6,3 +6,7 @@ type LaptimeProc struct {
 
 type SectorProc struct {
 }
+
+func NewLaptimeProc(numSectors int) *LaptimeProc {
+	return &LaptimeProc{numSectors: numSectors}
+}

@@ -20,6 +20,13 @@ const (
 	CarStateSlow = "SLOW"
 )
 
+const (
+	MarkerOverallBest  = "ob"
+	MarkerPersonalBest = "pb"
+	MarkerClassBest    = "cb"
+	MarkerOldLap       = "old"
+)
+
 type carInit struct{}
 
 func (ci *carInit) Enter(cd *CarData) { log.Info("Entering state: carInit") }
@@ -116,12 +123,19 @@ type carWorkData struct {
 	speed         float64
 }
 
+type Laptime struct {
+	time   float64
+	marker string
+}
+
 type CarData struct {
 	carIdx          int32
 	msgData         map[string]interface{}
 	state           string
 	trackPos        float64
-	currentBest     float64
+	bestLap         float64
+	lastLap         float64
+	lastRaw         float64 // data from irsdk
 	slowMarker      bool
 	currentSector   int
 	stintLap        int
@@ -135,6 +149,7 @@ type CarData struct {
 	interval        float64
 	gap             float64
 	currentState    carState
+	laptimeProc     *LaptimeProc
 	carDriverProc   *CarDriverProc
 	pitBoundaryProc *PitBoundaryProc
 	gpd             *GlobalProcessingData
@@ -145,21 +160,22 @@ func NewCarData(
 	carDriverProc *CarDriverProc,
 	pitBoundaryProc *PitBoundaryProc,
 	gpd *GlobalProcessingData) *CarData {
-	ret := CarData{carIdx: carIdx, carDriverProc: carDriverProc, pitBoundaryProc: pitBoundaryProc, gpd: gpd}
-	ret.init()
+	laptimeProc := NewLaptimeProc(len(gpd.TrackInfo.Sectors))
+	ret := CarData{
+		carIdx:          carIdx,
+		currentState:    &carInit{},
+		msgData:         make(map[string]interface{}),
+		carDriverProc:   carDriverProc,
+		pitBoundaryProc: pitBoundaryProc,
+		laptimeProc:     laptimeProc,
+		gpd:             gpd}
+
 	return &ret
-}
-
-func (cd *CarData) init() {
-	cd.currentState = &carInit{}
-	cd.msgData = make(map[string]interface{})
-
 }
 
 // CarProc is a struct that contains the logic to process data for a single car data.
 
-func (cd *CarData) Process(api *irsdk.Irsdk) {
-
+func (cd *CarData) PreProcess(api *irsdk.Irsdk) {
 	cw := cd.extractIrsdkData(api)
 	cd.currentState.Update(cd, cw)
 	cd.prepareMsgData()
@@ -188,8 +204,8 @@ func (cd *CarData) prepareMsgData() {
 	cd.msgData["dist"] = cd.dist
 	cd.msgData["interval"] = cd.interval
 	cd.msgData["gap"] = cd.gap
-	cd.msgData["last"] = cd.currentBest
-	cd.msgData["best"] = cd.currentBest
+	cd.msgData["last"] = cd.lastLap
+	cd.msgData["best"] = cd.bestLap
 	cd.msgData["state"] = cd.state
 
 	// TODO: replace with real sector data

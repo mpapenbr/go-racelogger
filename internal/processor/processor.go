@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk/yaml"
@@ -130,12 +131,14 @@ func NewProcessor(
 }
 
 func (p *Processor) Process() {
+	y := p.api.GetLatestYaml()
 	p.raceProc.Process()
 	p.speedmapProc.Process()
-	y, _ := p.api.GetYaml()
-	if !reflect.DeepEqual(y.DriverInfo, p.lastDriverInfo) {
+	if !reflect.DeepEqual(y.DriverInfo, p.lastDriverInfo) && !cmp.Equal(y.DriverInfo, p.lastDriverInfo) {
 		log.Info("DriverInfo changed, updating state")
-		p.lastDriverInfo = reflect.ValueOf(y.DriverInfo).Interface().(yaml.DriverInfo)
+		// fmt.Printf("Delta: %v\n", cmp.Diff(y.DriverInfo, p.lastDriverInfo))
+		// p.lastDriverInfo = reflect.ValueOf(y.DriverInfo).Interface().(yaml.DriverInfo)
+		p.lastDriverInfo = y.DriverInfo
 		p.carDriverProc.Process(y)
 	}
 
@@ -171,7 +174,7 @@ func (p *Processor) handleStateMessage() {
 				Messages: p.messageProc.CreatePayload(),
 			},
 		}
-		log.Debug("About to send new state data", log.Any("msg", data))
+		// log.Debug("About to send new state data", log.Any("msg", data))
 		p.stateOutput <- data
 		p.lastTimeSendState = time.Now()
 		p.messageProc.Clear()
