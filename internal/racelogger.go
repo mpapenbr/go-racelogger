@@ -120,6 +120,9 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 		Manifests: model.Manifests{
 			Session: processor.SessionManifest(),
 			Car:     processor.CarManifest(&r.globalData),
+			Message: processor.MessageManifest(),
+			// TODO: remove if go-analysis is available (now: compatibility Javascript routine)
+			Pit: []string{},
 		},
 	}
 	err = r.dataprovider.RegisterProvider(req)
@@ -149,7 +152,6 @@ func (r *Racelogger) init() {
 		}
 	}
 	log.Debug("Telemetry data is available")
-	// TODO: may be obsolete
 
 }
 

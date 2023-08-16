@@ -2,12 +2,14 @@ package processor
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk/yaml"
+	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"golang.org/x/exp/slices"
 )
 
@@ -83,7 +85,7 @@ func gate(v float64) float64 {
 }
 
 func GetMetricUnit(s string) (float64, error) {
-	re := regexp.MustCompile("(?P<value>[0-9.-]+)\\s+(?P<unit>.*)")
+	re := regexp.MustCompile("(?P<value>[0-9.-]+)\\s*(?P<unit>.*)")
 
 	if !re.Match([]byte(s)) {
 		log.Error("invalid data with unit", log.String("data", s))
@@ -92,7 +94,7 @@ func GetMetricUnit(s string) (float64, error) {
 	matches := re.FindStringSubmatch(s)
 	value := matches[re.SubexpIndex("value")]
 	unit := matches[re.SubexpIndex("unit")]
-	if f, err := strconv.ParseFloat(value, 64); err != nil {
+	if f, err := strconv.ParseFloat(value, 64); err == nil {
 
 		if slices.Contains([]string{"m", "km", "kph", "C"}, unit) {
 			return f, nil
@@ -107,4 +109,63 @@ func GetMetricUnit(s string) (float64, error) {
 	} else {
 		return 0, err
 	}
+}
+
+func carClassesLookup(drivers []yaml.Drivers) map[int]model.CarClass {
+
+	lookup := make(map[int]model.CarClass)
+	for _, d := range drivers {
+		if isRealDriver(d) {
+			if _, ok := lookup[d.CarClassID]; !ok {
+				name := d.CarClassShortName
+				if name == "" {
+					name = fmt.Sprintf("CarClass %d", d.CarClassID)
+				}
+				lookup[d.CarClassID] = model.CarClass{ID: d.CarClassID, Name: name}
+			}
+		}
+	}
+	return lookup
+}
+
+func collectCarClasses(drivers []yaml.Drivers) []model.CarClass {
+	lookup := carClassesLookup(drivers)
+	ret := []model.CarClass{}
+	for _, v := range lookup {
+		ret = append(ret, v)
+	}
+	return ret
+}
+
+// collects the car informations from irdsk DriverInfo.Drivers (which is passed in as drivers argument)
+// Kind of confusing:
+//   - adjustments are made to a car, but the attributes are prefixed 'CarClass'
+//   - CarClassDryTireSetLimit is delivered as percent, but it contains the number of tire sets available
+//   - CarClassMaxFuelPct value is 0.0-1.0
+func collectCars(drivers []yaml.Drivers) []model.CarInfo {
+	classLookup := carClassesLookup(drivers)
+	ret := []model.CarInfo{}
+	carLookup := make(map[int]model.CarInfo)
+	for _, d := range drivers {
+		if isRealDriver(d) {
+			if _, ok := carLookup[d.CarID]; !ok {
+
+				carLookup[d.CarID] = model.CarInfo{
+					CarID:         d.CarID,
+					CarClassID:    d.CarClassID,
+					CarClassName:  classLookup[d.CarClassID].Name,
+					Name:          d.CarScreenName,
+					NameShort:     d.CarScreenNameShort,
+					FuelPct:       justValue(GetMetricUnit(d.CarClassMaxFuelPct)).(float64),
+					PowerAdjust:   justValue(GetMetricUnit(d.CarClassPowerAdjust)).(float64),
+					WeightPenalty: justValue(GetMetricUnit(d.CarClassWeightPenalty)).(float64),
+					DryTireSets:   int(justValue(GetMetricUnit(d.CarClassDryTireSetLimit)).(float64)),
+				}
+			}
+		}
+	}
+	for _, v := range carLookup {
+		ret = append(ret, v)
+	}
+	return ret
 }

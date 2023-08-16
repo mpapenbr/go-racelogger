@@ -130,10 +130,11 @@ type CarData struct {
 	gap           float64
 	currentState  carState
 	carDriverProc *CarDriverProc
+	gpd           *GlobalProcessingData
 }
 
-func NewCarData(carIdx int32, carDriverProc *CarDriverProc) *CarData {
-	ret := CarData{carIdx: carIdx, carDriverProc: carDriverProc}
+func NewCarData(carIdx int32, carDriverProc *CarDriverProc, gpd *GlobalProcessingData) *CarData {
+	ret := CarData{carIdx: carIdx, carDriverProc: carDriverProc, gpd: gpd}
 	ret.init()
 	return &ret
 }
@@ -180,6 +181,11 @@ func (cd *CarData) prepareMsgData() {
 	cd.msgData["best"] = cd.currentBest
 	cd.msgData["state"] = cd.state
 
+	// TODO: replace with real sector data
+	for i := 0; i < len(cd.gpd.TrackInfo.Sectors); i++ {
+		cd.msgData[fmt.Sprintf("s%d", i+1)] = 0
+	}
+
 	cd.msgData["userName"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).UserName
 	cd.msgData["teamName"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).TeamName
 	cd.msgData["car"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).CarScreenNameShort
@@ -189,6 +195,7 @@ func (cd *CarData) prepareMsgData() {
 	if cd.msgData["carClass"] == "" {
 		cd.msgData["carClass"] = fmt.Sprintf("CarClass %d", cd.carDriverProc.GetCurrentDriver(cd.carIdx).CarClassID)
 	}
+
 }
 
 func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {

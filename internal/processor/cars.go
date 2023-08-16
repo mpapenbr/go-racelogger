@@ -78,7 +78,7 @@ func (p *CarProc) Process() {
 		var ok bool
 		if carData, ok = p.carLookup[idx]; !ok {
 			// we have a new car, create it
-			carData = NewCarData(int32(idx), p.carDriverProc)
+			carData = NewCarData(int32(idx), p.carDriverProc, p.gpd)
 			p.carLookup[idx] = carData
 		}
 		carData.Process(p.api)
@@ -111,7 +111,7 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 	}
 
 	standardRaceOrder := func(i, j int) bool {
-		return (float64(work[i].lap) + work[i].trackPos) < (float64(work[j].lap) + work[j].trackPos)
+		return (float64(work[i].lap) + work[i].trackPos) > (float64(work[j].lap) + work[j].trackPos)
 	}
 
 	sort.Slice(work, standardRaceOrder)
