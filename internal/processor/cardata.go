@@ -8,8 +8,8 @@ import (
 )
 
 type carState interface {
-	Enter()
-	Exit()
+	Enter(cd *CarData)
+	Exit(cd *CarData)
 	Update(cd *CarData, cw *carWorkData)
 }
 
@@ -22,8 +22,8 @@ const (
 
 type carInit struct{}
 
-func (ci *carInit) Enter() { log.Info("Entering state: carInit") }
-func (ci *carInit) Exit()  { log.Info("Leaving state: carInit") }
+func (ci *carInit) Enter(cd *CarData) { log.Info("Entering state: carInit") }
+func (ci *carInit) Exit(cd *CarData)  { log.Info("Leaving state: carInit") }
 func (ci *carInit) Update(cd *CarData, cw *carWorkData) {
 	cd.copyWorkData(cw)
 	if cw.trackPos == -1 {
@@ -47,8 +47,8 @@ func (ci *carInit) Update(cd *CarData, cw *carWorkData) {
 
 type carRun struct{}
 
-func (cr *carRun) Enter() { log.Info("Entering state: carRun") }
-func (cr *carRun) Exit()  { log.Info("Leaving state: carRun") }
+func (cr *carRun) Enter(cd *CarData) { log.Info("Entering state: carRun") }
+func (cr *carRun) Exit(cd *CarData)  { log.Info("Leaving state: carRun") }
 func (cr *carRun) Update(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
@@ -69,8 +69,14 @@ func (cr *carRun) Update(cd *CarData, cw *carWorkData) {
 type carSlow struct{}
 type carPit struct{}
 
-func (cp *carPit) Enter() { log.Info("Entering state: carPit") }
-func (cp *carPit) Exit()  { log.Info("Leaving state: carPit") }
+func (cp *carPit) Enter(cd *CarData) {
+	log.Info("Entering state: carPit")
+	cd.pitBoundaryProc.processPitEntry(cd.trackPos)
+}
+func (cp *carPit) Exit(cd *CarData) {
+	log.Info("Leaving state: carPit")
+	cd.pitBoundaryProc.processPitExit(cd.trackPos)
+}
 func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 
 	if cw.trackPos == -1 {
@@ -90,8 +96,8 @@ func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 type carFinished struct{}
 type carOut struct{}
 
-func (co *carOut) Enter() { log.Info("Entering state: carOut") }
-func (co *carOut) Exit()  { log.Info("Leaving state: carOut") }
+func (co *carOut) Enter(cd *CarData) { log.Info("Entering state: carOut") }
+func (co *carOut) Exit(cd *CarData)  { log.Info("Leaving state: carOut") }
 func (co *carOut) Update(cd *CarData, cw *carWorkData) {
 	cd.copyWorkData(cw)
 
@@ -111,30 +117,35 @@ type carWorkData struct {
 }
 
 type CarData struct {
-	carIdx        int32
-	msgData       map[string]interface{}
-	state         string
-	trackPos      float64
-	currentBest   float64
-	slowMarker    bool
-	currentSector int
-	stintLap      int
-	pitstops      int
-	pos           int
-	pic           int
-	lap           int
-	lc            int
-	dist          int
-	speed         float64
-	interval      float64
-	gap           float64
-	currentState  carState
-	carDriverProc *CarDriverProc
-	gpd           *GlobalProcessingData
+	carIdx          int32
+	msgData         map[string]interface{}
+	state           string
+	trackPos        float64
+	currentBest     float64
+	slowMarker      bool
+	currentSector   int
+	stintLap        int
+	pitstops        int
+	pos             int
+	pic             int
+	lap             int
+	lc              int
+	dist            int
+	speed           float64
+	interval        float64
+	gap             float64
+	currentState    carState
+	carDriverProc   *CarDriverProc
+	pitBoundaryProc *PitBoundaryProc
+	gpd             *GlobalProcessingData
 }
 
-func NewCarData(carIdx int32, carDriverProc *CarDriverProc, gpd *GlobalProcessingData) *CarData {
-	ret := CarData{carIdx: carIdx, carDriverProc: carDriverProc, gpd: gpd}
+func NewCarData(
+	carIdx int32,
+	carDriverProc *CarDriverProc,
+	pitBoundaryProc *PitBoundaryProc,
+	gpd *GlobalProcessingData) *CarData {
+	ret := CarData{carIdx: carIdx, carDriverProc: carDriverProc, pitBoundaryProc: pitBoundaryProc, gpd: gpd}
 	ret.init()
 	return &ret
 }
@@ -159,9 +170,9 @@ func (cd *CarData) GetMsgData() map[string]interface{} {
 }
 
 func (cd *CarData) setState(s carState) {
-	cd.currentState.Exit()
+	cd.currentState.Exit(cd)
 	cd.currentState = s
-	cd.currentState.Enter()
+	cd.currentState.Enter(cd)
 }
 
 func (cd *CarData) prepareMsgData() {

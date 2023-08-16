@@ -40,12 +40,6 @@ type Racelogger struct {
 	globalData   processor.GlobalProcessingData
 }
 
-// TODO: Define this in service-manager
-type EventSession struct {
-	Num  int    `json:"num"`
-	Name string `json:"name"`
-}
-
 func defaultConfig() *Config {
 	return &Config{
 		eventKeyFunc: defaultEventKeyFunc,
@@ -202,26 +196,10 @@ func (r *Racelogger) convertSectors(sectors []yaml.Sectors) []model.Sector {
 	return ret
 }
 
-// TODO: modify and use this if EventSession is available in iracelog-service-manager
-func (r *Racelogger) convertSessionsA(sectors []yaml.Sessions) []EventSession {
-	ret := make([]EventSession, len(sectors))
+func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []model.EventSession {
+	ret := make([]model.EventSession, len(sectors))
 	for i, v := range sectors {
-		ret[i] = EventSession{Num: v.SessionNum, Name: v.SessionName}
-	}
-	return ret
-}
-
-// TODO:  remove this if EventSession is available in iracelog-service-manager
-func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []struct {
-	Num  int    `json:"num"`
-	Name string `json:"name"`
-} {
-	ret := make([]struct {
-		Num  int    `json:"num"`
-		Name string `json:"name"`
-	}, len(sectors))
-	for i, v := range sectors {
-		ret[i] = EventSession{Num: v.SessionNum, Name: v.SessionName}
+		ret[i] = model.EventSession{Num: v.SessionNum, Name: v.SessionName}
 	}
 	return ret
 }

@@ -20,6 +20,7 @@ type CarProc struct {
 	winnerCrossedTheLine bool
 	carLookup            map[int]*CarData
 	carDriverProc        *CarDriverProc
+	pitBoundaryProc      *PitBoundaryProc
 }
 
 var baseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
@@ -45,9 +46,13 @@ func CarManifest(gpd *GlobalProcessingData) []string {
 
 	return ret
 }
-func NewCarProc(api *irsdk.Irsdk, gpd *GlobalProcessingData, carDriverProc *CarDriverProc) *CarProc {
+func NewCarProc(
+	api *irsdk.Irsdk,
+	gpd *GlobalProcessingData,
+	carDriverProc *CarDriverProc,
+	pitBoundaryProc *PitBoundaryProc) *CarProc {
 
-	ret := &CarProc{api: api, gpd: gpd, carDriverProc: carDriverProc}
+	ret := &CarProc{api: api, gpd: gpd, carDriverProc: carDriverProc, pitBoundaryProc: pitBoundaryProc}
 	ret.init()
 	return ret
 }
@@ -78,7 +83,7 @@ func (p *CarProc) Process() {
 		var ok bool
 		if carData, ok = p.carLookup[idx]; !ok {
 			// we have a new car, create it
-			carData = NewCarData(int32(idx), p.carDriverProc, p.gpd)
+			carData = NewCarData(int32(idx), p.carDriverProc, p.pitBoundaryProc, p.gpd)
 			p.carLookup[idx] = carData
 		}
 		carData.Process(p.api)

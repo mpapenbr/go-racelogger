@@ -81,10 +81,12 @@ type Processor struct {
 	speedmapProc         SpeedmapProc
 	carDriverProc        *CarDriverProc
 	raceProc             *RaceProc
+	messageProc          *MessageProc
+	pitBoundaryProc      *PitBoundaryProc
 	lastDriverInfo       yaml.DriverInfo
 	stateOutput          chan model.StateData
 	speedmapOutput       chan model.SpeedmapData
-	carDataOutput        chan model.CarData
+
 	recordingDoneChannel chan struct{}
 }
 
@@ -100,8 +102,10 @@ func NewProcessor(
 		o(opts)
 	}
 
+	pitBoundaryProc := NewPitBoundaryProc()
 	carDriverProc := NewCarDriverProc(api, cardataOutput)
-	carProc := NewCarProc(api, &opts.GlobalProcessingData, carDriverProc)
+	messageProc := NewMessageProc(carDriverProc)
+	carProc := NewCarProc(api, &opts.GlobalProcessingData, carDriverProc, pitBoundaryProc)
 	raceProc := NewRaceProc(api, carProc, func() {
 		if opts.RecordingDoneChannel != nil {
 			log.Debug("Signaling recording done")
@@ -114,12 +118,14 @@ func NewProcessor(
 		lastTimeSendState: time.Time{},
 		stateOutput:       stateOutput,
 		speedmapOutput:    speedmapOutput,
-		carDataOutput:     cardataOutput,
-		carProc:           carProc,
-		raceProc:          raceProc,
-		sessionProc:       SessionProc{api: api},
-		speedmapProc:      SpeedmapProc{api: api, chunkSize: opts.ChunkSize, gpd: &opts.GlobalProcessingData},
-		carDriverProc:     carDriverProc,
+
+		messageProc:     messageProc,
+		carProc:         carProc,
+		raceProc:        raceProc,
+		sessionProc:     SessionProc{api: api},
+		speedmapProc:    SpeedmapProc{api: api, chunkSize: opts.ChunkSize, gpd: &opts.GlobalProcessingData},
+		carDriverProc:   carDriverProc,
+		pitBoundaryProc: pitBoundaryProc,
 	}
 }
 
@@ -135,7 +141,7 @@ func (p *Processor) Process() {
 
 	p.handleStateMessage()
 	p.handleSpeedmapMessage()
-	// p.handleCarDataMessage()
+
 }
 
 func (p *Processor) handleSpeedmapMessage() {
@@ -154,37 +160,20 @@ func (p *Processor) handleSpeedmapMessage() {
 	}
 }
 
-func (p *Processor) handleCarDataMessage() {
-	if time.Now().After(p.lastTimeSendCardata.Add(p.options.CarDataPublishInterval)) {
-		data := model.CarData{
-			Type:      int(model.MTCar),
-			Timestamp: float64(time.Now().UnixMilli()),
-			Payload: model.CarPayload{
-				Cars:       []model.CarInfo{},
-				CarClasses: []model.CarClass{},
-				Entries:    []model.CarEntry{},
-			},
-		}
-		log.Debug("About to send new car data", log.Any("msg", data))
-		p.carDataOutput <- data
-		p.lastTimeSendCardata = time.Now()
-	}
-}
-
 func (p *Processor) handleStateMessage() {
 	if time.Now().After(p.lastTimeSendState.Add(p.options.StatePublishInterval)) {
 		data := model.StateData{
 			Type:      int(model.MTState),
 			Timestamp: float64(time.Now().UnixMilli()),
 			Payload: model.StatePayload{
-				Session: p.sessionProc.CreatePayload(),
-				Cars:    p.carProc.CreatePayload(),
-				// Cars:     [][]interface{}{},
-				Messages: []interface{}{},
+				Session:  p.sessionProc.CreatePayload(),
+				Cars:     p.carProc.CreatePayload(),
+				Messages: p.messageProc.CreatePayload(),
 			},
 		}
 		log.Debug("About to send new state data", log.Any("msg", data))
 		p.stateOutput <- data
 		p.lastTimeSendState = time.Now()
+		p.messageProc.Clear()
 	}
 }
