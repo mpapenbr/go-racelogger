@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk/yaml"
@@ -16,12 +15,13 @@ import (
 // this means overall standings, gaps, etc.
 // the data for single cars is processed in CarData
 type CarProc struct {
-	api             *irsdk.Irsdk
-	gpd             *GlobalProcessingData
-	lastSessionTime float64
+	api *irsdk.Irsdk
+	gpd *GlobalProcessingData
+
 	// minimum distance a car has to move to be considered valid
 	minMoveDistPct       float64
 	winnerCrossedTheLine bool
+	currentTime          float64   // current sessionTime at start of this cycle
 	prevSessionTime      float64   // used for computing speed/distance
 	prevLapDistPct       []float32 // data from previous iteration (CarIdxLapDistPct)
 	carLookup            map[int]*CarData
@@ -29,6 +29,7 @@ type CarProc struct {
 
 	carDriverProc   *CarDriverProc
 	pitBoundaryProc *PitBoundaryProc
+	speedmapProc    *SpeedmapProc
 }
 
 var baseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
@@ -43,7 +44,7 @@ func CarManifest(gpd *GlobalProcessingData) []string {
 	for i := range gpd.TrackInfo.Sectors {
 		ret = append(ret, fmt.Sprintf("s%d", i+1))
 	}
-	if gpd.EventDataInfo.NumCarClasses > 1 {
+	if gpd.EventDataInfo.NumCarClasses == 1 {
 		idx := slices.Index(ret, "carClass")
 		ret = slices.Delete(ret, idx, idx+1)
 	}
@@ -58,9 +59,17 @@ func NewCarProc(
 	api *irsdk.Irsdk,
 	gpd *GlobalProcessingData,
 	carDriverProc *CarDriverProc,
-	pitBoundaryProc *PitBoundaryProc) *CarProc {
+	pitBoundaryProc *PitBoundaryProc,
+	speedmapProc *SpeedmapProc) *CarProc {
 
-	ret := &CarProc{api: api, gpd: gpd, carDriverProc: carDriverProc, pitBoundaryProc: pitBoundaryProc}
+	ret := &CarProc{
+		api:             api,
+		gpd:             gpd,
+		carDriverProc:   carDriverProc,
+		pitBoundaryProc: pitBoundaryProc,
+		speedmapProc:    speedmapProc,
+	}
+
 	ret.init()
 	return ret
 }
@@ -79,14 +88,16 @@ func (p *CarProc) Process() {
 	currentTime := justValue(p.api.GetDoubleValue("SessionTime")).(float64)
 
 	// check if we have valid data, otherwise return
-	if currentTime < 0 || currentTime <= p.lastSessionTime {
+	if currentTime < 0 || currentTime <= p.prevSessionTime {
 		return
 	}
 	// check if a race session is ongoing
 	if !shouldRecord(p.api) {
 		return
 	}
-	for _, idx := range p.getProcessableCarIdxs() {
+	p.currentTime = currentTime
+	processableCars := p.getProcessableCarIdxs()
+	for _, idx := range processableCars {
 		var carData *CarData
 		var ok bool
 		if carData, ok = p.carLookup[idx]; !ok {
@@ -96,6 +107,11 @@ func (p *CarProc) Process() {
 		}
 		carData.PreProcess(p.api)
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
+			speed := p.calcSpeed(carData)
+			carData.speed = speed
+
+			p.speedmapProc.Process()
+
 			// compute times for car
 			// compute speed for car
 			// call postProcess for carData
@@ -109,18 +125,50 @@ func (p *CarProc) Process() {
 	curStandingsIR := y.SessionInfo.Sessions[sessionNum].ResultsPositions
 	if curStandingsIR != nil && !reflect.DeepEqual(curStandingsIR, p.lastStandingsIR) {
 		log.Info("New standings available")
-		fmt.Printf("Standings-Delta: %v\n", cmp.Diff(curStandingsIR, p.lastStandingsIR))
+		// fmt.Printf("Standings-Delta: %v\n", cmp.Diff(curStandingsIR, p.lastStandingsIR))
 		p.processStandings(curStandingsIR)
 		// standings changed, update
 		p.lastStandingsIR = curStandingsIR
 
 	}
-
+	// do post processing for all cars
+	for _, c := range processableCars {
+		p.carLookup[c].PostProcess()
+	}
 	// copy data for next iteration
-	p.lastSessionTime = currentTime
+	p.prevSessionTime = currentTime
 	p.prevLapDistPct = make([]float32, len(justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32)))
 	copy(p.prevLapDistPct, justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32))
 
+}
+
+func (p *CarProc) calcSpeed(carData *CarData) float64 {
+	// carData has already recieved current trackPos
+	if len(p.prevLapDistPct) == 0 {
+		return -1
+	}
+	currentTrackPos := carData.trackPos
+	moveDist := deltaDistance(currentTrackPos, gate(float64(p.prevLapDistPct[carData.carIdx])))
+	deltaTime := p.currentTime - p.prevSessionTime
+	if deltaTime != 0 {
+		if moveDist < p.minMoveDistPct {
+			log.Debug("Car moved less than 10cm", log.Float64("moveDist", moveDist), log.Float64("minMoveDistPct", p.minMoveDistPct))
+			return 0
+		}
+		speed := p.gpd.TrackInfo.Length * moveDist / deltaTime * 3.6
+		// old safe guard from python variant
+		if speed > 400 {
+			log.Warn("Speed > 400",
+				log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
+				log.Float64("speed", speed))
+			return -1
+		}
+		return speed
+	} else {
+		log.Debug("Delta time is 0")
+		return 0
+	}
+	// compute speed
 }
 
 func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {

@@ -92,6 +92,7 @@ func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 		return
 	}
 	cd.copyWorkData(cw)
+
 	if cw.pit == false {
 		cd.state = CarStateRun
 		cd.setState(&carRun{})
@@ -128,6 +129,8 @@ type Laptime struct {
 	marker string
 }
 
+// CarData is a struct that contains the logic to process data for a single car data.
+// Part of data is computed externally (e.g. CarProc) and passed in
 type CarData struct {
 	carIdx          int32
 	msgData         map[string]interface{}
@@ -148,6 +151,7 @@ type CarData struct {
 	speed           float64
 	interval        float64
 	gap             float64
+	prevTrackPos    float64
 	currentState    carState
 	laptimeProc     *LaptimeProc
 	carDriverProc   *CarDriverProc
@@ -173,11 +177,13 @@ func NewCarData(
 	return &ret
 }
 
-// CarProc is a struct that contains the logic to process data for a single car data.
-
 func (cd *CarData) PreProcess(api *irsdk.Irsdk) {
 	cw := cd.extractIrsdkData(api)
 	cd.currentState.Update(cd, cw)
+
+}
+
+func (cd *CarData) PostProcess() {
 	cd.prepareMsgData()
 }
 

@@ -49,7 +49,7 @@ func (p *MessageProc) RaceStarts() {
 		"msg":      "Race start",
 	})
 }
-func (p *MessageProc) CheckerdFlagIssued() {
+func (p *MessageProc) CheckeredFlagIssued() {
 	p.buffer = append(p.buffer, GenericMessage{
 		"type":     "Timing",
 		"subType":  "RaceControl",
@@ -57,6 +57,17 @@ func (p *MessageProc) CheckerdFlagIssued() {
 		"carNum":   nil,
 		"carClass": nil,
 		"msg":      "Checkered flag",
+	})
+}
+
+func (p *MessageProc) RecordingDone() {
+	p.buffer = append(p.buffer, GenericMessage{
+		"type":     "Timing",
+		"subType":  "RaceControl",
+		"carIdx":   nil,
+		"carNum":   nil,
+		"carClass": nil,
+		"msg":      "End of recording",
 	})
 }
 

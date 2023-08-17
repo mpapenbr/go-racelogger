@@ -3,8 +3,10 @@ package processor
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
@@ -14,6 +16,11 @@ import (
 )
 
 var ErrUnknownValueWithUnit = errors.New("Unknown value with unit format")
+
+// returns time as unix seconds and microseconds as decimal part
+func float64Timestamp(t time.Time) float64 {
+	return float64(t.Unix()) + (float64(t.UnixMicro()%1e6))/float64(1e6)
+}
 
 func justValue(v any, _ error) any {
 	return v
@@ -84,6 +91,23 @@ func gate(v float64) float64 {
 	return v
 }
 
+func deltaDistance(a, b float64) float64 {
+	if a >= b {
+		return a - b
+	} else {
+		return a + 1 - b
+	}
+}
+
+func deltaToPrev(a, b float64) float64 {
+	d := math.Abs(a - b)
+	if d > 0.5 {
+		return 1 - d
+	} else {
+		return d
+	}
+}
+
 func GetMetricUnit(s string) (float64, error) {
 	re := regexp.MustCompile("(?P<value>[0-9.-]+)\\s*(?P<unit>.*)")
 
@@ -106,6 +130,14 @@ func GetMetricUnit(s string) (float64, error) {
 			return f, nil
 		}
 
+	} else {
+		return 0, err
+	}
+}
+
+func GetTrackLengthInMeters(s string) (float64, error) {
+	if f, err := GetMetricUnit(s); err == nil {
+		return f * 1000, nil
 	} else {
 		return 0, err
 	}

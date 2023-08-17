@@ -152,7 +152,7 @@ func (r *Racelogger) init() {
 func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (*model.EventDataInfo, error) {
 
 	pitSpeed, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackPitSpeedLimit)
-	trackLength, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackLength)
+	trackLength, _ := processor.GetTrackLengthInMeters(irYaml.WeekendInfo.TrackLength)
 	ret := model.EventDataInfo{
 		TrackId:               irYaml.WeekendInfo.TrackID,
 		TrackDisplayName:      irYaml.WeekendInfo.TrackDisplayName,
@@ -176,7 +176,7 @@ func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (*model.EventDataIn
 
 func (r *Racelogger) createTrackInfo(irYaml *yaml.IrsdkYaml) (*model.TrackInfo, error) {
 
-	trackLength, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackLength)
+	trackLength, _ := processor.GetTrackLengthInMeters(irYaml.WeekendInfo.TrackLength)
 	ret := model.TrackInfo{
 		ID:        irYaml.WeekendInfo.TrackID,
 		Name:      irYaml.WeekendInfo.TrackDisplayName,

@@ -18,7 +18,8 @@ type RaceProc struct {
 	currentState     raceState
 	cooldownEntered  time.Time
 	carProc          *CarProc
-	raceDoneCallback func()
+	messageProc      *MessageProc
+	RaceDoneCallback func()
 }
 
 type RaceInvalid struct{}
@@ -31,6 +32,7 @@ func (ri *RaceInvalid) Update(rp *RaceProc) {
 	if y.SessionInfo.Sessions[sessionNum].SessionType == "Race" {
 		sessionSate := justValue(rp.api.GetIntValue("SessionState")).(int32)
 		if sessionSate == int32(irsdk.StateRacing) {
+			rp.messageProc.RaceStarts()
 			rp.setState(&RaceRun{})
 		}
 	}
@@ -45,6 +47,7 @@ func (rr *RaceRun) Exit()  { log.Info("Leaving state: RaceRun") }
 func (rr *RaceRun) Update(rp *RaceProc) {
 	sessionSate := justValue(rp.api.GetIntValue("SessionState")).(int32)
 	if sessionSate == int32(irsdk.StateCheckered) {
+		rp.messageProc.CheckeredFlagIssued()
 		rp.setState(&RaceFinishing{})
 		return
 	}
@@ -73,6 +76,7 @@ func (rc *RaceCooldown) Enter() { log.Info("Entering state: RaceCooldown") }
 func (rc *RaceCooldown) Exit()  { log.Info("Leaving state: RaceCooldown") }
 func (rc *RaceCooldown) Update(rp *RaceProc) {
 	if time.Since(rp.cooldownEntered) > time.Second*5 {
+		rp.messageProc.RecordingDone()
 		rp.setState(&RaceDone{})
 		return
 	}
@@ -88,8 +92,8 @@ func (rd *RaceDone) Update(rp *RaceProc) {
 	rp.onRaceDone()
 }
 
-func NewRaceProc(api *irsdk.Irsdk, carProc *CarProc, raceDoneCallback func()) *RaceProc {
-	ret := RaceProc{api: api, carProc: carProc, raceDoneCallback: raceDoneCallback}
+func NewRaceProc(api *irsdk.Irsdk, carProc *CarProc, messageProc *MessageProc, raceDoneCallback func()) *RaceProc {
+	ret := RaceProc{api: api, carProc: carProc, messageProc: messageProc, RaceDoneCallback: raceDoneCallback}
 	ret.currentState = &RaceInvalid{}
 	return &ret
 }
@@ -106,8 +110,8 @@ func (rp *RaceProc) markEnterCooldown() {
 
 func (rp *RaceProc) onRaceDone() {
 	// if handler registered, do something with it
-	if rp.raceDoneCallback != nil {
-		rp.raceDoneCallback()
+	if rp.RaceDoneCallback != nil {
+		rp.RaceDoneCallback()
 	}
 }
 

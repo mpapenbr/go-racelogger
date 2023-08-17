@@ -15,7 +15,7 @@ type SpeedmapProc struct {
 	lastSessionTime float64
 }
 
-func NewSpeedmapProcessor(api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData) *SpeedmapProc {
+func NewSpeedmapProc(api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData) *SpeedmapProc {
 	return &SpeedmapProc{api: api, chunkSize: chunkSize, gpd: gpd}
 }
 

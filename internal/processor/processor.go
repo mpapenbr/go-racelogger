@@ -79,7 +79,7 @@ type Processor struct {
 	lastTimeSendCardata  time.Time
 	sessionProc          SessionProc
 	carProc              *CarProc
-	speedmapProc         SpeedmapProc
+	speedmapProc         *SpeedmapProc
 	carDriverProc        *CarDriverProc
 	raceProc             *RaceProc
 	messageProc          *MessageProc
@@ -106,14 +106,13 @@ func NewProcessor(
 	pitBoundaryProc := NewPitBoundaryProc()
 	carDriverProc := NewCarDriverProc(api, cardataOutput)
 	messageProc := NewMessageProc(carDriverProc)
-	carProc := NewCarProc(api, &opts.GlobalProcessingData, carDriverProc, pitBoundaryProc)
-	raceProc := NewRaceProc(api, carProc, func() {
-		if opts.RecordingDoneChannel != nil {
-			log.Debug("Signaling recording done")
-			close(opts.RecordingDoneChannel)
-		}
-	})
-	return &Processor{
+	speedmapProc := NewSpeedmapProc(api, opts.ChunkSize, &opts.GlobalProcessingData)
+	carProc := NewCarProc(api, &opts.GlobalProcessingData, carDriverProc, pitBoundaryProc, speedmapProc)
+	raceProc := NewRaceProc(api,
+		carProc,
+		messageProc,
+		nil)
+	ret := Processor{
 		api:               api,
 		options:           opts,
 		lastTimeSendState: time.Time{},
@@ -124,9 +123,23 @@ func NewProcessor(
 		carProc:         carProc,
 		raceProc:        raceProc,
 		sessionProc:     SessionProc{api: api},
-		speedmapProc:    SpeedmapProc{api: api, chunkSize: opts.ChunkSize, gpd: &opts.GlobalProcessingData},
+		speedmapProc:    speedmapProc,
 		carDriverProc:   carDriverProc,
 		pitBoundaryProc: pitBoundaryProc,
+	}
+	ret.init()
+	return &ret
+
+}
+
+func (p *Processor) init() {
+	p.raceProc.RaceDoneCallback = func() {
+		p.sendSpeedmapMessage()
+		p.sendStateMessage()
+		if p.options.RecordingDoneChannel != nil {
+			log.Debug("Signaling recording done")
+			close(p.options.RecordingDoneChannel)
+		}
 	}
 }
 
@@ -142,41 +155,46 @@ func (p *Processor) Process() {
 		p.carDriverProc.Process(y)
 	}
 
-	p.handleStateMessage()
-	p.handleSpeedmapMessage()
-
-}
-
-func (p *Processor) handleSpeedmapMessage() {
-	if time.Now().After(p.lastTimeSendSpeedmap.Add(p.options.SpeedmapPublishInterval)) {
-		data := model.SpeedmapData{
-			Type:      int(model.MTSpeedmap),
-			Timestamp: float64(time.Now().UnixMilli()),
-			Payload: model.SpeedmapPayload{
-				Data:      map[string]*model.ClassSpeedmapData{},
-				ChunkSize: 10,
-			},
-		}
-		log.Debug("About to send new speedmap data", log.Any("msg", data))
-		p.speedmapOutput <- data
-		p.lastTimeSendSpeedmap = time.Now()
-	}
-}
-
-func (p *Processor) handleStateMessage() {
 	if time.Now().After(p.lastTimeSendState.Add(p.options.StatePublishInterval)) {
-		data := model.StateData{
-			Type:      int(model.MTState),
-			Timestamp: float64(time.Now().UnixMilli()),
-			Payload: model.StatePayload{
-				Session:  p.sessionProc.CreatePayload(),
-				Cars:     p.carProc.CreatePayload(),
-				Messages: p.messageProc.CreatePayload(),
-			},
-		}
-		// log.Debug("About to send new state data", log.Any("msg", data))
-		p.stateOutput <- data
-		p.lastTimeSendState = time.Now()
-		p.messageProc.Clear()
+		p.sendStateMessage()
 	}
+	if time.Now().After(p.lastTimeSendSpeedmap.Add(p.options.SpeedmapPublishInterval)) {
+
+		p.sendSpeedmapMessage()
+	}
+
+}
+
+func (p *Processor) sendSpeedmapMessage() {
+
+	data := model.SpeedmapData{
+		Type:      int(model.MTSpeedmap),
+		Timestamp: float64Timestamp(time.Now()),
+		Payload: model.SpeedmapPayload{
+			Data:      map[string]*model.ClassSpeedmapData{},
+			ChunkSize: p.speedmapProc.chunkSize,
+		},
+	}
+	log.Debug("About to send new speedmap data", log.Any("msg", data))
+	p.speedmapOutput <- data
+	p.lastTimeSendSpeedmap = time.Now()
+
+}
+
+func (p *Processor) sendStateMessage() {
+
+	data := model.StateData{
+		Type:      int(model.MTState),
+		Timestamp: float64Timestamp(time.Now()),
+		Payload: model.StatePayload{
+			Session:  p.sessionProc.CreatePayload(),
+			Cars:     p.carProc.CreatePayload(),
+			Messages: p.messageProc.CreatePayload(),
+		},
+	}
+	// log.Debug("About to send new state data", log.Any("msg", data))
+	// log.Debug("CarProc data", log.Any("prevLapDistPct", p.carProc.prevLapDistPct))
+	p.stateOutput <- data
+	p.lastTimeSendState = time.Now()
+	p.messageProc.Clear()
 }
