@@ -19,19 +19,8 @@ func NewSpeedmapProc(api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData)
 	return &SpeedmapProc{api: api, chunkSize: chunkSize, gpd: gpd}
 }
 
-func (s *SpeedmapProc) Process() {
+func (s *SpeedmapProc) Process(carData *CarData) {
 	// do nothing
-	// currentTick := justValue(s.api.GetIntValue("SessionTick"))
-	currentTime := justValue(s.api.GetDoubleValue("SessionTime")).(float64)
-
-	// check if we have valid data, otherwise return
-	if currentTime < 0 || currentTime <= s.lastSessionTime {
-		return
-	}
-	// check if a race session is ongoing
-	if !shouldRecord(s.api) {
-		return
-	}
 
 }
 

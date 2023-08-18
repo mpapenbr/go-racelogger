@@ -109,8 +109,8 @@ func (p *CarProc) Process() {
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
 			speed := p.calcSpeed(carData)
 			carData.speed = speed
-
-			p.speedmapProc.Process()
+			p.computeTimes(carData)
+			p.speedmapProc.Process(carData)
 
 			// compute times for car
 			// compute speed for car
@@ -142,6 +142,71 @@ func (p *CarProc) Process() {
 
 }
 
+func (p *CarProc) computeTimes(carData *CarData) {
+	i := len(p.gpd.TrackInfo.Sectors) - 1
+	for carData.trackPos < p.gpd.TrackInfo.Sectors[i].SectorStartPct {
+		i--
+	}
+	if carData.currentSector == -1 {
+		carData.currentSector = i
+		// don't compute this sector. on -1 we are pretty much rushing into a running race or just put into the car
+		return
+	}
+	if carData.currentSector == i {
+		return // nothing to do, actions are done on sector change
+	}
+	//  the prev sector is done (we assume the car is running in the correct direction)
+	//  but some strange things may happen: car spins, comes to a halt, drives in reverse direction and crosses the sector mark multiple times ;)
+	//  very rare, I hope
+	//  so we check if the current sector is the next "expected" sector
+	expectedSector := (carData.currentSector + 1) % len(p.gpd.TrackInfo.Sectors)
+	if i != expectedSector {
+		return
+	}
+
+	carNum := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber
+
+	// if the sector has no start time we ignore it. prepare the next one and leave
+	// need a pointer here, otherwise changes done here will get lost
+	sector := &carData.laptiming.sectors[carData.currentSector]
+
+	if sector.isStarted() == false {
+		carData.startSector(i, p.currentTime)
+		log.Debug("Sector had no start time. Now initialized",
+			log.String("carNum", carNum),
+			log.Int("sector", i))
+		return
+	}
+
+	duration := sector.markStop(p.currentTime)
+	log.Debug("Sector completed",
+		log.String("carNum", carNum),
+		log.Int("sector", carData.currentSector),
+		log.Float64("duration", duration))
+
+	// TODO: check againts best sectors (overall, class, car, personal)
+
+	// mark sectors as old when crossing the line
+	if carData.currentSector == 0 {
+		carData.markSectorsAsOld()
+	}
+
+	// start next sector (this will be i)
+	carData.startSector(i, p.currentTime)
+
+	// compute own laptime
+	if carData.currentSector == 0 {
+		log.Debug("Car crossed the line", log.String("carNum", carNum))
+		if carData.isLapStarted() {
+			carData.stopLap(p.currentTime)
+			// TODO: check againts best sectors (overall, class, car, personal)
+			// TODO: check race finish
+		}
+		carData.startLap(p.currentTime)
+
+	}
+}
+
 func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	// carData has already recieved current trackPos
 	if len(p.prevLapDistPct) == 0 {
@@ -152,7 +217,7 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	deltaTime := p.currentTime - p.prevSessionTime
 	if deltaTime != 0 {
 		if moveDist < p.minMoveDistPct {
-			log.Debug("Car moved less than 10cm", log.Float64("moveDist", moveDist), log.Float64("minMoveDistPct", p.minMoveDistPct))
+			// log.Debug("Car moved less than 10cm", log.Float64("moveDist", moveDist), log.Float64("minMoveDistPct", p.minMoveDistPct))
 			return 0
 		}
 		speed := p.gpd.TrackInfo.Length * moveDist / deltaTime * 3.6
@@ -185,7 +250,7 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 		work.pic = int(st.ClassPosition)
 		work.gap = st.Time
 		work.bestLap = st.FastestTime
-		work.lastLap = st.LastTime
+		work.lastLap = TimeWithMarker{time: st.LastTime, marker: ""}
 	}
 	// TODO: mark laps as ob,pb,cb
 }

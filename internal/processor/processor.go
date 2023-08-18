@@ -146,8 +146,10 @@ func (p *Processor) init() {
 func (p *Processor) Process() {
 	y := p.api.GetLatestYaml()
 	p.raceProc.Process()
-	p.speedmapProc.Process()
-	if !reflect.DeepEqual(y.DriverInfo, p.lastDriverInfo) && !cmp.Equal(y.DriverInfo, p.lastDriverInfo) {
+
+	if !reflect.DeepEqual(y.DriverInfo, p.lastDriverInfo) &&
+		!cmp.Equal(y.DriverInfo, p.lastDriverInfo) {
+
 		log.Info("DriverInfo changed, updating state")
 		// fmt.Printf("Delta: %v\n", cmp.Diff(y.DriverInfo, p.lastDriverInfo))
 		// p.lastDriverInfo = reflect.ValueOf(y.DriverInfo).Interface().(yaml.DriverInfo)

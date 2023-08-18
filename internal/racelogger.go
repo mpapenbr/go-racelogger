@@ -332,8 +332,8 @@ func (r *Racelogger) setupMainLoop() {
 					durations = append(durations, time.Since(startProc))
 					// log.Debug("Processed data", log.Duration("duration", time.Since(startProc)))
 					if len(durations) == 120 {
-						min := time.Duration(^uint64(0) >> 1)
-						// set max to max int64
+						// set min to 1s
+						min := time.Duration(1 * time.Second)
 						max := time.Duration(0)
 						sum := int64(0)
 						for _, v := range durations {
