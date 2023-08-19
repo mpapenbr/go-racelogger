@@ -3,6 +3,8 @@ package processor
 import (
 	"fmt"
 	"math"
+
+	"github.com/mpapenbr/go-racelogger/log"
 )
 
 const (
@@ -155,6 +157,24 @@ func (b *BestSectionProc) markInternal(
 	// 		}
 	// 	}
 	// }
+	handleDegrade := func(otherCar *SectionTiming, otherGeneric *SectionTiming, otherByCar []*CarLaptiming, marker string) {
+		if otherCar != nil {
+			otherCar.markDuration(MarkerPersonalBest)
+			otherGeneric.markDuration(MarkerCarBest)
+		} else {
+			otherCL := findEntryWithMarker(otherByCar, marker)
+			if otherCL != nil {
+				otherGeneric.markDuration(MarkerPersonalBest)
+			} else {
+				otherGeneric.markDuration(MarkerCarBest)
+			}
+
+		}
+	}
+	if st.duration.time < 0 {
+		log.Warn("early return from markInternal", log.Float64("time", st.duration.time))
+		return st.duration.marker // keeping marker
+	}
 
 	if st.duration.time < m["overall"] {
 		m["overall"] = st.duration.time
@@ -173,55 +193,58 @@ func (b *BestSectionProc) markInternal(
 		// handle "degradation" of possible duplicates
 
 		if otherOverall != nil {
-			if otherCar != nil {
-				otherCar.markDuration(MarkerPersonalBest)
-				otherOverall.markDuration(MarkerCarBest)
-			} else {
-				otherCLOverall := findEntryWithMarker(otherByCar, MarkerOverallBest)
-				if otherCLOverall != nil {
-					otherOverall.markDuration(MarkerPersonalBest)
-				} else {
-					otherOverall.markDuration(MarkerCarBest)
-				}
-
-			}
+			handleDegrade(otherCar, otherOverall, otherByCar, MarkerOverallBest)
 		}
-
 		if otherClass != nil {
-			if otherCar != nil {
-				otherCar.markDuration(MarkerPersonalBest)
-				otherClass.markDuration(MarkerCarBest)
-			} else {
-				otherCLClassBest := findEntryWithMarker(otherByCar, MarkerClassBest)
-				if otherCLClassBest != nil {
-					otherClass.markDuration(MarkerPersonalBest)
-				} else {
-					otherClass.markDuration(MarkerCarBest)
-				}
-			}
+			handleDegrade(otherCar, otherClass, otherByCar, MarkerClassBest)
 		}
+
 		if otherCar != nil {
 			otherCar.markDuration(MarkerPersonalBest)
 		}
 
 		st.markDuration(MarkerOverallBest)
 		st.inProgress = false
-		// remarkOthers(numSector, MarkerOverallBest, MarkerClassBest)
+
 		return MarkerOverallBest
 	}
 	if st.duration.time < m[className] {
 		m[className] = st.duration.time
 		m[carName] = st.duration.time
 		st.personalBest = st.duration.time
+		st.inProgress = true
+		otherByClass := b.collectFromOther(carClassId, -1)
+		otherByCar := b.collectFromOther(carClassId, carId)
+
+		otherClass := findWithMarker(otherByClass, MarkerClassBest)
+		otherCar := findWithMarker(otherByCar, MarkerCarBest)
+
+		if otherClass != nil {
+			handleDegrade(otherCar, otherClass, otherByCar, MarkerClassBest)
+		}
+
+		if otherCar != nil {
+			otherCar.markDuration(MarkerPersonalBest)
+		}
+
 		st.markDuration(MarkerClassBest)
-		// remarkOthers(numSector, MarkerPersonalBest, MarkerClassBest)
+		st.inProgress = false
+
 		return MarkerClassBest
 	}
 	if st.duration.time < m[carName] {
 		m[carName] = st.duration.time
 		st.personalBest = st.duration.time
+		st.inProgress = true
+		otherByCar := b.collectFromOther(carClassId, carId)
+		otherCar := findWithMarker(otherByCar, MarkerCarBest)
+		if otherCar != nil {
+			otherCar.markDuration(MarkerPersonalBest)
+		}
+
 		st.markDuration(MarkerCarBest)
-		// remarkOthers(numSector, MarkerPersonalBest, MarkerClassBest)
+		st.inProgress = false
+
 		return MarkerCarBest
 	}
 	if st.duration.time < st.personalBest {
@@ -229,8 +252,13 @@ func (b *BestSectionProc) markInternal(
 		st.markDuration(MarkerPersonalBest)
 		// remarkOthers(numSector, MarkerPersonalBest, MarkerClassBest)
 		return MarkerPersonalBest
-	} else {
+	}
+
+	if st.duration.time > st.personalBest {
 		st.markDuration("")
 		return ""
+	} else {
+		return st.duration.marker
 	}
+
 }

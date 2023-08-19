@@ -30,6 +30,7 @@ type CarProc struct {
 	carDriverProc   *CarDriverProc
 	pitBoundaryProc *PitBoundaryProc
 	speedmapProc    *SpeedmapProc
+	bestSectionProc *BestSectionProc
 }
 
 var baseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
@@ -75,10 +76,41 @@ func NewCarProc(
 }
 
 func (p *CarProc) init() {
+
+	collectInts := func(m map[int32][]yaml.Drivers) []int {
+		ret := make([]int, 0)
+		for k := range m {
+			ret = append(ret, int(k))
+		}
+		return ret
+	}
+
 	// car must move 10cm to be considered valid
 	p.minMoveDistPct = 0.1 / p.gpd.TrackInfo.Length
 	p.carLookup = make(map[int]*CarData)
 
+	p.bestSectionProc = NewBestSectionProc(len(p.gpd.TrackInfo.Sectors),
+		collectInts(p.carDriverProc.byCarClassIdLookup),
+		collectInts(p.carDriverProc.byCarIdLookup),
+		func(carClassId, carId int) []*CarLaptiming {
+
+			work := make([]*CarLaptiming, 0)
+			for i, v := range p.carLookup {
+				curEntry := p.carDriverProc.GetCurrentDriver(int32(i))
+				if carId != -1 {
+					if carId == curEntry.CarID {
+						work = append(work, v.laptiming)
+					}
+				} else if carClassId != -1 {
+					if carClassId == curEntry.CarClassID {
+						work = append(work, v.laptiming)
+					}
+				} else {
+					work = append(work, v.laptiming)
+				}
+			}
+			return work
+		})
 }
 
 // will be called every tick, we can assume to have valid data (no unexpected -1 values)
@@ -166,6 +198,8 @@ func (p *CarProc) computeTimes(carData *CarData) {
 	}
 
 	carNum := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber
+	carId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarID
+	carClassId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarClassID
 
 	// if the sector has no start time we ignore it. prepare the next one and leave
 	// need a pointer here, otherwise changes done here will get lost
@@ -185,7 +219,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 		log.Int("sector", carData.currentSector),
 		log.Float64("duration", duration))
 
-	// TODO: check againts best sectors (overall, class, car, personal)
+	p.bestSectionProc.markSector(sector, carData.currentSector, carClassId, carId)
 
 	// mark sectors as old when crossing the line
 	if carData.currentSector == 0 {
@@ -200,7 +234,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 		log.Debug("Car crossed the line", log.String("carNum", carNum))
 		if carData.isLapStarted() {
 			carData.stopLap(p.currentTime)
-			// TODO: check againts best sectors (overall, class, car, personal)
+			// no need to call bestSectionProc. This will be handled in processStandings
 			// TODO: check race finish
 		}
 		carData.startLap(p.currentTime)
@@ -251,15 +285,20 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 		work.pic = int(st.ClassPosition)
 		work.gap = st.Time
 		work.bestLap = st.FastestTime
-		work.lastLap = TimeWithMarker{time: st.LastTime, marker: ""}
 		standingsLaptime := st.LastTime
+
 		if standingsLaptime == -1 {
 			work.useOwnLaptime()
 		} else {
-
+			work.setStandingsLaptime(st.LastTime)
 		}
+
+		p.bestSectionProc.markLap(work.laptiming.lap,
+			work.carDriverProc.GetCurrentDriver(work.carIdx).CarClassID,
+			work.carDriverProc.GetCurrentDriver(work.carIdx).CarID)
+
 	}
-	// TODO: mark laps as ob,pb,cb
+
 }
 
 func (p *CarProc) getProcessableCarIdxs() []int {

@@ -256,13 +256,27 @@ func TestBestSectionProc_markClassBest(t *testing.T) {
 		{
 			name: "Degrade existing class best",
 			input: []TestData{
-				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerClassBest}}}},
-				{2, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 21.0, marker: ""}}}},
+				{1, 20, 200, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerClassBest}}}},
+				{2, 20, 200, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 21.0, marker: ""}}}},
 			},
 			patchArgs: args{2, 15.0},
 			expected: []TestData{
-				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerPersonalBest}}}},
-				{2, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 15.0, marker: MarkerClassBest}, personalBest: 15.0}}},
+				{1, 20, 200, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerPersonalBest}}}},
+				{2, 20, 200, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 15.0, marker: MarkerClassBest}, personalBest: 15.0}}},
+			},
+		},
+		{
+			name: "Degrade existing class best keeping ",
+			input: []TestData{
+				{1, 20, 200, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerClassBest}}}},
+				{2, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 21.0, marker: ""}}}},
+				{3, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 21.0, marker: MarkerCarBest}}}},
+			},
+			patchArgs: args{2, 15.0},
+			expected: []TestData{
+				{1, 20, 200, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerCarBest}}}},
+				{2, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 15.0, marker: MarkerClassBest}, personalBest: 15.0}}},
+				{3, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 21.0, marker: MarkerPersonalBest}}}},
 			},
 		},
 	}
@@ -277,6 +291,59 @@ func TestBestSectionProc_markClassBest(t *testing.T) {
 			if reflect.DeepEqual(tt.input, tt.expected) == false {
 				diff := cmp.Diff(tt.input, tt.expected, cmp.AllowUnexported(CarLaptiming{}, SectionTiming{}, TimeWithMarker{}))
 				t.Errorf("TestBestSectionProc_markClassBest() = %v, want %v diff: %s", tt.input, tt.expected, diff)
+			}
+
+		})
+	}
+}
+func TestBestSectionProc_markCarBest(t *testing.T) {
+	type args struct {
+		ref  int
+		time float64
+	}
+	tests := []struct {
+		name      string
+		input     []TestData
+		patchArgs args
+		expected  []TestData
+	}{
+
+		{
+			name: "New car best",
+			input: []TestData{
+				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 10.0, marker: MarkerOverallBest}}}},
+				{2, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
+			},
+			patchArgs: args{2, 23.0},
+			expected: []TestData{
+				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 10.0, marker: MarkerOverallBest}}}},
+				{2, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 23.0, marker: MarkerCarBest}, personalBest: 23.0}}},
+			},
+		},
+		{
+			name: "Degrade existing car best",
+			input: []TestData{
+				{1, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 24.0, marker: MarkerCarBest}}}},
+				{2, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
+			},
+			patchArgs: args{2, 23.0},
+			expected: []TestData{
+				{1, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 24.0, marker: MarkerPersonalBest}}}},
+				{2, 20, 201, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 23.0, marker: MarkerCarBest}, personalBest: 23.0}}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proc := sampleBestSectionProc()
+			proc.collectFromOther = collectCarLaptiming(tt.input)
+
+			item := patchTime(tt.input, tt.patchArgs.ref, tt.patchArgs.time)
+
+			proc.markLap(item.Laptiming.lap, item.CarClassId, item.CarId)
+			if reflect.DeepEqual(tt.input, tt.expected) == false {
+				diff := cmp.Diff(tt.input, tt.expected, cmp.AllowUnexported(CarLaptiming{}, SectionTiming{}, TimeWithMarker{}))
+				t.Errorf("TestBestSectionProc_markCarBest() = %v, want %v diff: %s", tt.input, tt.expected, diff)
 			}
 
 		})
@@ -299,48 +366,60 @@ func TestBestSectionProc_removeMarker(t *testing.T) {
 			name: "Existing overall best",
 			input: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerOverallBest}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerOverallBest}, personalBest: 20.0}}},
 			},
 			patchArgs: args{2, 25.0},
 			expected: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}, personalBest: 20.0}}},
 			},
 		},
 		{
 			name: "Existing class best",
 			input: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerClassBest}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerClassBest}, personalBest: 20.0}}},
 			},
 			patchArgs: args{2, 25.0},
 			expected: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}, personalBest: 20.0}}},
 			},
 		},
 		{
 			name: "Existing car best",
 			input: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerCarBest}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerCarBest}, personalBest: 20.0}}},
 			},
 			patchArgs: args{2, 25.0},
 			expected: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}, personalBest: 20.0}}},
 			},
 		},
 		{
 			name: "Existing personal best",
 			input: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerPersonalBest}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerPersonalBest}, personalBest: 20.0}}},
 			},
 			patchArgs: args{2, 25.0},
 			expected: []TestData{
 				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
-				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 25.0, marker: ""}, personalBest: 20.0}}},
+			},
+		},
+		{
+			name: "Keep marker if not slower",
+			input: []TestData{
+				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerPersonalBest}, personalBest: 20.0}}},
+			},
+			patchArgs: args{2, 20.0},
+			expected: []TestData{
+				{1, 10, 100, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 30.0, marker: ""}}}},
+				{2, 10, 101, CarLaptiming{lap: &SectionTiming{duration: TimeWithMarker{time: 20.0, marker: MarkerPersonalBest}, personalBest: 20.0}}},
 			},
 		},
 	}

@@ -203,7 +203,7 @@ func (cd *CarData) prepareMsgData() {
 	cd.msgData["dist"] = cd.dist
 	cd.msgData["interval"] = cd.interval
 	cd.msgData["gap"] = cd.gap
-	cd.msgData["last"] = []interface{}{cd.lastLap.time, cd.lastLap.marker}
+	cd.msgData["last"] = []interface{}{cd.laptiming.lap.duration.time, cd.laptiming.lap.duration.marker}
 	cd.msgData["best"] = cd.bestLap
 	cd.msgData["state"] = cd.state
 
@@ -259,6 +259,9 @@ func (cd *CarData) isLapStarted() bool {
 
 func (cd *CarData) useOwnLaptime() {
 	cd.lastLap.time = cd.laptiming.lap.duration.time
+}
+func (cd *CarData) setStandingsLaptime(t float64) {
+	cd.laptiming.lap.duration.time = t
 }
 
 func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {
