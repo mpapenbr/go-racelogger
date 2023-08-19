@@ -257,6 +257,10 @@ func (cd *CarData) isLapStarted() bool {
 	return cd.laptiming.lap.isStarted()
 }
 
+func (cd *CarData) useOwnLaptime() {
+	cd.lastLap.time = cd.laptiming.lap.duration.time
+}
+
 func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {
 	cw := carWorkData{}
 	cw.carIdx = cd.carIdx

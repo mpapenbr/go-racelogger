@@ -104,6 +104,7 @@ func (p *CarProc) Process() {
 			// we have a new car, create it
 			carData = NewCarData(int32(idx), p.carDriverProc, p.pitBoundaryProc, p.gpd)
 			p.carLookup[idx] = carData
+
 		}
 		carData.PreProcess(p.api)
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
@@ -168,7 +169,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 
 	// if the sector has no start time we ignore it. prepare the next one and leave
 	// need a pointer here, otherwise changes done here will get lost
-	sector := &carData.laptiming.sectors[carData.currentSector]
+	sector := carData.laptiming.sectors[carData.currentSector]
 
 	if sector.isStarted() == false {
 		carData.startSector(i, p.currentTime)
@@ -251,6 +252,12 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 		work.gap = st.Time
 		work.bestLap = st.FastestTime
 		work.lastLap = TimeWithMarker{time: st.LastTime, marker: ""}
+		standingsLaptime := st.LastTime
+		if standingsLaptime == -1 {
+			work.useOwnLaptime()
+		} else {
+
+		}
 	}
 	// TODO: mark laps as ob,pb,cb
 }

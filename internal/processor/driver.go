@@ -14,7 +14,10 @@ import (
 type CarDriverProc struct {
 	api *irsdk.Irsdk
 	// maps carIdx to current driver of the car
-	lookup map[int32]yaml.Drivers
+	lookup             map[int32]yaml.Drivers
+	byCarIdLookup      map[int32][]yaml.Drivers
+	byCarClassIdLookup map[int32][]yaml.Drivers
+
 	// maps carIdx to all drivers of the team
 	teams  map[int32][]yaml.Drivers
 	output chan model.CarData
@@ -34,16 +37,31 @@ func newCarDriverProcInternal(api *irsdk.Irsdk, output chan model.CarData) *CarD
 
 func (d *CarDriverProc) init(y *yaml.IrsdkYaml) {
 	d.lookup = make(map[int32]yaml.Drivers)
+	d.byCarIdLookup = make(map[int32][]yaml.Drivers)
+	d.byCarClassIdLookup = make(map[int32][]yaml.Drivers)
+
 	d.teams = make(map[int32][]yaml.Drivers)
+
 	for _, v := range y.DriverInfo.Drivers {
 		if !isRealDriver(v) {
 			continue
 		}
 
-		newEntry := reflect.ValueOf(v).Interface().(yaml.Drivers)
+		newEntry := v
 		d.lookup[int32(v.CarIdx)] = newEntry
 		teamMembers := []yaml.Drivers{newEntry}
 		d.teams[int32(v.CarIdx)] = teamMembers
+		if vCar, ok := d.byCarIdLookup[int32(v.CarID)]; !ok {
+			d.byCarIdLookup[int32(v.CarID)] = []yaml.Drivers{newEntry}
+		} else {
+			vCar = append(vCar, newEntry)
+		}
+
+		if vCar, ok := d.byCarClassIdLookup[int32(v.CarClassID)]; !ok {
+			d.byCarClassIdLookup[int32(v.CarClassID)] = []yaml.Drivers{newEntry}
+		} else {
+			vCar = append(vCar, newEntry)
+		}
 	}
 
 }
