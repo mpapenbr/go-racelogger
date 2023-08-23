@@ -21,9 +21,10 @@ type CarProc struct {
 	// minimum distance a car has to move to be considered valid
 	minMoveDistPct       float64
 	winnerCrossedTheLine bool
-	currentTime          float64   // current sessionTime at start of this cycle
-	prevSessionTime      float64   // used for computing speed/distance
-	prevLapDistPct       []float32 // data from previous iteration (CarIdxLapDistPct)
+	aboutToFinishMarker  []finishMarker // order at the time the checkered flag was waved
+	currentTime          float64        // current sessionTime at start of this cycle
+	prevSessionTime      float64        // used for computing speed/distance
+	prevLapDistPct       []float32      // data from previous iteration (CarIdxLapDistPct)
 	carLookup            map[int]*CarData
 	lastStandingsIR      []yaml.ResultsPositions
 
@@ -31,6 +32,11 @@ type CarProc struct {
 	pitBoundaryProc *PitBoundaryProc
 	speedmapProc    *SpeedmapProc
 	bestSectionProc *BestSectionProc
+}
+
+type finishMarker struct {
+	carIdx int32
+	ref    float64 // lap + trackPos at the time the checkered flag was waved
 }
 
 var baseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
@@ -237,6 +243,26 @@ func (p *CarProc) computeTimes(carData *CarData) {
 			// no need to call bestSectionProc. This will be handled in processStandings
 			// TODO: check race finish
 		}
+		if p.winnerCrossedTheLine {
+			carData.setState(&carFinished{})
+			carData.stintLap -= 1
+			carData.lap = carData.lc
+			log.Info("Car finished the race", log.String("carNum", carNum))
+			return
+
+		} else {
+			if len(p.aboutToFinishMarker) > 0 {
+				if float64(carData.lap) > p.aboutToFinishMarker[0].ref {
+					p.winnerCrossedTheLine = true
+					carData.setState(&carFinished{})
+					carData.stintLap -= 1
+					carData.lap = carData.lc
+					log.Info("Car WON the race", log.String("carNum", carNum))
+					return
+				}
+
+			}
+		}
 		carData.startLap(p.currentTime)
 
 	}
@@ -321,8 +347,36 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 		return (float64(work[i].lap) + work[i].trackPos) > (float64(work[j].lap) + work[j].trackPos)
 	}
 
-	sort.Slice(work, standardRaceOrder)
+	raceEndingOrder := func(i, j int) bool {
+		return work[i].pos < work[j].pos
+	}
+	if p.winnerCrossedTheLine {
+		sort.Slice(work, raceEndingOrder)
+	} else {
+		sort.Slice(work, standardRaceOrder)
+	}
 	return work
+}
+
+func (p *CarProc) RaceStarts() {
+	log.Info("Recieved race start event. ")
+	// have to check if we need this.....
+	// for _, idx := range p.getProcessableCarIdxs() {
+	// 	p.carLookup[idx].startLap(p.currentTime)
+	// }
+
+}
+
+func (p *CarProc) CheckeredFlagIssued() {
+	// from now on we only want data for cars who still not have finished the race
+	// we compute a marker by lc + trackPos.
+	// The next car that crosses the line with dist > marker is the winner
+	// (Note: does not work if all cars currently on the leading lap do not reach the s/f)
+	p.aboutToFinishMarker = make([]finishMarker, 0)
+	for _, car := range p.getInCurrentRaceOrder() {
+		p.aboutToFinishMarker = append(p.aboutToFinishMarker,
+			finishMarker{carIdx: car.carIdx, ref: float64(car.lap) + car.trackPos})
+	}
 }
 
 func (p *CarProc) CreatePayload() [][]interface{} {

@@ -14,10 +14,11 @@ type carState interface {
 }
 
 const (
-	CarStateOut  = "OUT"
-	CarStateRun  = "RUN"
-	CarStatePit  = "PIT"
-	CarStateSlow = "SLOW"
+	CarStateOut    = "OUT"
+	CarStateRun    = "RUN"
+	CarStatePit    = "PIT"
+	CarStateSlow   = "SLOW"
+	CarStateFinish = "FIN"
 )
 
 type carInit struct{}
@@ -96,12 +97,34 @@ func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 }
 
 type carFinished struct{}
+
+func (cf *carFinished) Enter(cd *CarData) { log.Info("Entering state: carFinished") }
+func (cf *carFinished) Exit(cd *CarData)  { log.Info("Leaving state: carFinished") }
+func (cf *carFinished) Update(cd *CarData, cw *carWorkData) {
+	// do nothing - final state
+	cd.state = CarStateFinish
+
+}
+
 type carOut struct{}
 
 func (co *carOut) Enter(cd *CarData) { log.Info("Entering state: carOut") }
 func (co *carOut) Exit(cd *CarData)  { log.Info("Leaving state: carOut") }
 func (co *carOut) Update(cd *CarData, cw *carWorkData) {
-	cd.copyWorkData(cw)
+	// this may happen after resets or tow to pit road.
+	// if not on the pit road it may just be a short connection issue.
+	if cw.pit {
+		cd.state = CarStatePit
+		cd.stintLap = 0
+		cd.setState(&carPit{})
+		return
+	} else {
+		if cw.trackPos > -1 {
+			cd.state = CarStateRun
+			cd.setState(&carRun{})
+			return
+		}
+	}
 
 }
 

@@ -33,6 +33,7 @@ func (ri *RaceInvalid) Update(rp *RaceProc) {
 		sessionSate := justValue(rp.api.GetIntValue("SessionState")).(int32)
 		if sessionSate == int32(irsdk.StateRacing) {
 			rp.messageProc.RaceStarts()
+			rp.carProc.RaceStarts()
 			rp.setState(&RaceRun{})
 		}
 	}
@@ -48,6 +49,7 @@ func (rr *RaceRun) Update(rp *RaceProc) {
 	sessionSate := justValue(rp.api.GetIntValue("SessionState")).(int32)
 	if sessionSate == int32(irsdk.StateCheckered) {
 		rp.messageProc.CheckeredFlagIssued()
+		rp.carProc.CheckeredFlagIssued()
 		rp.setState(&RaceFinishing{})
 		return
 	}
