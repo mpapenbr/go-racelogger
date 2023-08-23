@@ -148,7 +148,7 @@ type CarData struct {
 	msgData         map[string]interface{}
 	state           string
 	trackPos        float64
-	bestLap         float64
+	bestLap         TimeWithMarker
 	lastLap         TimeWithMarker
 	lastRaw         float64 // data from irsdk
 	slowMarker      bool
@@ -187,7 +187,7 @@ func NewCarData(
 		gpd:             gpd,
 		currentSector:   -1,
 		lastLap:         TimeWithMarker{time: -1, marker: ""},
-		bestLap:         -1,
+		bestLap:         TimeWithMarker{time: -1, marker: ""},
 	}
 
 	return &ret
@@ -227,7 +227,7 @@ func (cd *CarData) prepareMsgData() {
 	cd.msgData["interval"] = cd.interval
 	cd.msgData["gap"] = cd.gap
 	cd.msgData["last"] = []interface{}{cd.laptiming.lap.duration.time, cd.laptiming.lap.duration.marker}
-	cd.msgData["best"] = cd.bestLap
+	cd.msgData["best"] = []interface{}{cd.bestLap.time, cd.bestLap.marker}
 	cd.msgData["state"] = cd.state
 
 	for i := 0; i < len(cd.gpd.TrackInfo.Sectors); i++ {

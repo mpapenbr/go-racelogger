@@ -310,7 +310,7 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 		work.pos = int(st.Position)
 		work.pic = int(st.ClassPosition)
 		work.gap = st.Time
-		work.bestLap = st.FastestTime
+		work.bestLap.time = st.FastestTime
 		standingsLaptime := st.LastTime
 
 		if standingsLaptime == -1 {
@@ -325,6 +325,65 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 
 	}
 
+	p.markBestLaps()
+
+}
+
+func (p *CarProc) markBestLaps() {
+	// mark bestLaps
+	byCar := make(map[int][]*CarData)
+	byClass := make(map[int][]*CarData)
+	all := make([]*CarData, 0)
+	for _, car := range p.carLookup {
+		if car.bestLap.time != -1 {
+			all = append(all, car)
+		}
+	}
+	if len(all) == 0 {
+		return
+	}
+	sortByBestLap := func(a, b *CarData) int {
+
+		if a.bestLap.time < b.bestLap.time {
+			return -1
+		} else if a.bestLap.time > b.bestLap.time {
+			return 1
+		}
+		return 0
+
+	}
+	debugBest := func(title string, car []*CarData) {
+		for _, item := range car {
+			log.Debug("Best lap",
+				log.String("title", title),
+				log.String("carNum", item.carDriverProc.GetCurrentDriver(item.carIdx).CarNumber),
+				log.Float64("bestLap", item.bestLap.time),
+				log.String("marker", item.bestLap.marker))
+		}
+	}
+
+	slices.SortStableFunc(all, sortByBestLap)
+	if false {
+		debugBest("All", all)
+	}
+
+	for _, car := range all {
+		byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID] = append(byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID], car)
+		byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID] = append(byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID], car)
+	}
+
+	// reset all marker
+	for _, item := range all {
+		item.bestLap.marker = ""
+	}
+	for _, item := range byCar {
+		item[0].bestLap.marker = MarkerCarBest
+	}
+	for _, item := range byClass {
+		item[0].bestLap.marker = MarkerClassBest
+	}
+
+	all[0].bestLap.marker = MarkerOverallBest
 }
 
 func (p *CarProc) getProcessableCarIdxs() []int {
