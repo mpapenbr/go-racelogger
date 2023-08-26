@@ -159,7 +159,7 @@ type CarData struct {
 	pic             int
 	lap             int
 	lc              int
-	dist            int
+	dist            float64
 	speed           float64
 	interval        float64
 	gap             float64

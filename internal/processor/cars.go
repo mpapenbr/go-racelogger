@@ -159,8 +159,12 @@ func (p *CarProc) Process() {
 	}
 
 	// at this point all cars have been processed
+
 	y := p.api.GetLatestYaml()
 	sessionNum := justValue(p.api.GetIntValue("SessionNum")).(int32)
+	if y.SessionInfo.Sessions[sessionNum].SessionType == "Race" {
+		p.calcDelta()
+	}
 	curStandingsIR := y.SessionInfo.Sessions[sessionNum].ResultsPositions
 	if curStandingsIR != nil && !reflect.DeepEqual(curStandingsIR, p.lastStandingsIR) {
 		log.Info("New standings available")
@@ -297,6 +301,35 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	// compute speed
 }
 
+func (p *CarProc) calcDelta() {
+	currentRaceOrder := p.getInCurrentRaceOrder()
+	// currentCarsTrackPos := justValue(p.api.GetFloatValues("CarIdxLapDistPct"))
+	for i, car := range currentRaceOrder[1:] {
+		// since i starts at 0 we use this as index for currentRaceOrder for the car in front
+		// note the range skips the first car in currentRaceOrder
+		if car.pos < 0 {
+			continue
+		}
+		if car.state == CarStateOut {
+			continue
+		}
+		if car.state == CarStateFinish {
+			carInFront := currentRaceOrder[i]
+			gapOfCarInFront := carInFront.gap
+			car.interval = car.gap - gapOfCarInFront
+			car.dist = 0
+			continue
+		}
+
+		car.dist = deltaDistance(currentRaceOrder[i].trackPos, car.trackPos) * p.gpd.TrackInfo.Length
+		if car.speed <= 0 {
+			car.interval = 999
+		} else {
+			// car.interval = car.dist / car.speed
+		}
+	}
+}
+
 func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 	// Note: IR-standings are provided with a little delay after cars crossed the line
 
@@ -406,11 +439,40 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 		return (float64(work[i].lap) + work[i].trackPos) > (float64(work[j].lap) + work[j].trackPos)
 	}
 
-	raceEndingOrder := func(i, j int) bool {
-		return work[i].pos < work[j].pos
+	raceEndingOrder := func(a, b *CarData) int {
+		if a.pos < b.pos {
+			return -1
+		} else if a.pos > b.pos {
+			return 1
+		} else {
+			return 0
+		}
 	}
 	if p.winnerCrossedTheLine {
-		sort.Slice(work, raceEndingOrder)
+		invalidPos := make([]*CarData, 0)
+		validPos := make([]*CarData, 0)
+		for _, item := range work {
+			if item.pos > 0 {
+				validPos = append(validPos, item)
+			} else {
+				invalidPos = append(invalidPos, item)
+			}
+		}
+		slices.SortStableFunc(validPos, raceEndingOrder)
+
+		work = make([]*CarData, 0)
+		for _, item := range validPos {
+			work = append(work, item)
+		}
+		for _, item := range invalidPos {
+			work = append(work, item)
+		}
+
+		dOutput := []string{}
+		for _, item := range work {
+			dOutput = append(dOutput, fmt.Sprintf("%d: %d", item.pos, item.carIdx))
+		}
+		// log.Debug("raceEndingOrder", log.String("order", strings.Join(dOutput, ",")))
 	} else {
 		sort.Slice(work, standardRaceOrder)
 	}
