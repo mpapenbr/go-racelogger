@@ -172,11 +172,9 @@ func (p *Processor) sendSpeedmapMessage() {
 	data := model.SpeedmapData{
 		Type:      int(model.MTSpeedmap),
 		Timestamp: float64Timestamp(time.Now()),
-		Payload: model.SpeedmapPayload{
-			Data:      map[string]*model.ClassSpeedmapData{},
-			ChunkSize: p.speedmapProc.chunkSize,
-		},
+		Payload:   p.speedmapProc.CreatePayload(),
 	}
+
 	log.Debug("About to send new speedmap data", log.Any("msg", data))
 	p.speedmapOutput <- data
 	p.lastTimeSendSpeedmap = time.Now()

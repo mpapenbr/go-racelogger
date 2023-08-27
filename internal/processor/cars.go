@@ -146,10 +146,11 @@ func (p *CarProc) Process() {
 		}
 		carData.PreProcess(p.api)
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
+			driver := p.carDriverProc.GetCurrentDriver(int32(idx))
 			speed := p.calcSpeed(carData)
 			carData.speed = speed
 			p.computeTimes(carData)
-			p.speedmapProc.Process(carData)
+			p.speedmapProc.Process(carData, driver.CarClassID, driver.CarID)
 
 			// compute times for car
 			// compute speed for car
@@ -165,6 +166,7 @@ func (p *CarProc) Process() {
 	if y.SessionInfo.Sessions[sessionNum].SessionType == "Race" {
 		p.calcDelta()
 	}
+
 	curStandingsIR := y.SessionInfo.Sessions[sessionNum].ResultsPositions
 	if curStandingsIR != nil && !reflect.DeepEqual(curStandingsIR, p.lastStandingsIR) {
 		log.Info("New standings available")
@@ -178,6 +180,7 @@ func (p *CarProc) Process() {
 	for _, c := range processableCars {
 		p.carLookup[c].PostProcess()
 	}
+	p.speedmapProc.SetLeaderTrackPos(p.getInCurrentRaceOrder()[0].trackPos)
 	// copy data for next iteration
 	p.prevSessionTime = currentTime
 	p.prevLapDistPct = make([]float32, len(justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32)))
@@ -303,7 +306,6 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 
 func (p *CarProc) calcDelta() {
 	currentRaceOrder := p.getInCurrentRaceOrder()
-	// currentCarsTrackPos := justValue(p.api.GetFloatValues("CarIdxLapDistPct"))
 	for i, car := range currentRaceOrder[1:] {
 		// since i starts at 0 we use this as index for currentRaceOrder for the car in front
 		// note the range skips the first car in currentRaceOrder
@@ -325,7 +327,9 @@ func (p *CarProc) calcDelta() {
 		if car.speed <= 0 {
 			car.interval = 999
 		} else {
-			// car.interval = car.dist / car.speed
+			carClassId := car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID
+			deltaByCarClassSpeemap := p.speedmapProc.ComputeDeltaTime(carClassId, currentRaceOrder[i].trackPos, car.trackPos)
+			car.interval = deltaByCarClassSpeemap
 		}
 	}
 }
