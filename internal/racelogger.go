@@ -288,6 +288,7 @@ func (r *Racelogger) setupMainLoop() {
 	stateChannel := make(chan model.StateData, 2)
 	speedmapChannel := make(chan model.SpeedmapData, 1)
 	carDataChannel := make(chan model.CarData, 1)
+	extraInfoChannel := make(chan model.ExtraInfo, 1)
 
 	recordingDoneChannel := make(chan struct{}, 1)
 	proc := processor.NewProcessor(
@@ -295,6 +296,7 @@ func (r *Racelogger) setupMainLoop() {
 		stateChannel,
 		speedmapChannel,
 		carDataChannel,
+		extraInfoChannel,
 		processor.WithGlobalProcessingData(r.globalData),
 		processor.WithChunkSize(10),
 		processor.WithRecordingDoneChannel(recordingDoneChannel),
@@ -305,6 +307,7 @@ func (r *Racelogger) setupMainLoop() {
 	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)
 	r.dataprovider.PublishSpeedmapDataFromChannel(r.eventKey, speedmapChannel)
 	r.dataprovider.PublishCarDataFromChannel(r.eventKey, carDataChannel)
+	r.dataprovider.SendExtraInfoFromChannel(r.eventKey, extraInfoChannel)
 
 	mainLoop := func(ctx context.Context) {
 		durations := []time.Duration{}

@@ -87,6 +87,7 @@ type Processor struct {
 	lastDriverInfo       yaml.DriverInfo
 	stateOutput          chan model.StateData
 	speedmapOutput       chan model.SpeedmapData
+	extraInfoOutput      chan model.ExtraInfo
 
 	recordingDoneChannel chan struct{}
 }
@@ -96,6 +97,7 @@ func NewProcessor(
 	stateOutput chan model.StateData,
 	speedmapOutput chan model.SpeedmapData,
 	cardataOutput chan model.CarData,
+	extraInfoOutput chan model.ExtraInfo,
 	options ...OptionsFunc) *Processor {
 
 	opts := defaultOptions()
@@ -118,14 +120,14 @@ func NewProcessor(
 		lastTimeSendState: time.Time{},
 		stateOutput:       stateOutput,
 		speedmapOutput:    speedmapOutput,
-
-		messageProc:     messageProc,
-		carProc:         carProc,
-		raceProc:        raceProc,
-		sessionProc:     SessionProc{api: api},
-		speedmapProc:    speedmapProc,
-		carDriverProc:   carDriverProc,
-		pitBoundaryProc: pitBoundaryProc,
+		extraInfoOutput:   extraInfoOutput,
+		messageProc:       messageProc,
+		carProc:           carProc,
+		raceProc:          raceProc,
+		sessionProc:       SessionProc{api: api},
+		speedmapProc:      speedmapProc,
+		carDriverProc:     carDriverProc,
+		pitBoundaryProc:   pitBoundaryProc,
 	}
 	ret.init()
 	return &ret
@@ -136,6 +138,25 @@ func (p *Processor) init() {
 	p.raceProc.RaceDoneCallback = func() {
 		p.sendSpeedmapMessage()
 		p.sendStateMessage()
+		// if enough data was collected, send it to server
+		if p.pitBoundaryProc.pitEntry.computed && p.pitBoundaryProc.pitExit.computed {
+			log.Info("Pit entry and exit computed during session, sending to server")
+			pitLaneLength := func(entry, exit float64) float64 {
+				if exit > entry {
+					return (exit - entry) * p.options.GlobalProcessingData.TrackInfo.Length
+				} else {
+					return (1.0 - entry + exit) * p.options.GlobalProcessingData.TrackInfo.Length
+				}
+			}
+			pitInfo := model.PitInfo{
+				Entry:      p.pitBoundaryProc.pitEntry.middle,
+				Exit:       p.pitBoundaryProc.pitExit.middle,
+				LaneLength: pitLaneLength(p.pitBoundaryProc.pitEntry.middle, p.pitBoundaryProc.pitExit.middle),
+			}
+			p.raceProc.carProc.gpd.TrackInfo.Pit = &pitInfo
+			p.extraInfoOutput <- model.ExtraInfo{Track: p.raceProc.carProc.gpd.TrackInfo}
+			time.Sleep(1 * time.Second) // wait a little to get message transmitted
+		}
 		if p.options.RecordingDoneChannel != nil {
 			log.Debug("Signaling recording done")
 			close(p.options.RecordingDoneChannel)
@@ -175,7 +196,7 @@ func (p *Processor) sendSpeedmapMessage() {
 		Payload:   p.speedmapProc.CreatePayload(),
 	}
 
-	log.Debug("About to send new speedmap data", log.Any("msg", data))
+	// log.Debug("About to send new speedmap data", log.Any("msg", data))
 	p.speedmapOutput <- data
 	p.lastTimeSendSpeedmap = time.Now()
 

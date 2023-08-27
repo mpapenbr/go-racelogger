@@ -145,18 +145,6 @@ func (b *BestSectionProc) markInternal(
 		return nil
 	}
 
-	// degradeOther := func(otherCar *SectionTiming, otherGeneric *SectionTiming, otherByCar []CarLaptiming) {
-	// 	if otherCar != nil {
-	// 		otherCar.markDuration(MarkerPersonalBest)
-	// 		otherGeneric.markDuration(MarkerCarBest)
-	// 	} else {
-	// 		if currentIsInSameCar(otherByCar) {
-	// 			otherGeneric.markDuration(MarkerPersonalBest)
-	// 		} else {
-	// 			otherGeneric.markDuration(MarkerCarBest)
-	// 		}
-	// 	}
-	// }
 	handleDegrade := func(otherCar *SectionTiming, otherGeneric *SectionTiming, otherByCar []*CarLaptiming, marker string) {
 		if otherCar != nil {
 			otherCar.markDuration(MarkerPersonalBest)

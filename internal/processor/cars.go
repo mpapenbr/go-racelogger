@@ -54,6 +54,9 @@ func CarManifest(gpd *GlobalProcessingData) []string {
 	if gpd.EventDataInfo.NumCarClasses == 1 {
 		idx := slices.Index(ret, "carClass")
 		ret = slices.Delete(ret, idx, idx+1)
+
+		idx = slices.Index(ret, "pic")
+		ret = slices.Delete(ret, idx, idx+1)
 	}
 	if gpd.EventDataInfo.TeamRacing == 0 {
 		idx := slices.Index(ret, "teamName")
@@ -188,6 +191,19 @@ func (p *CarProc) Process() {
 
 }
 
+func (p *CarProc) carInfo(carIdx int) {
+	carData := p.carLookup[carIdx]
+	carNum := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber
+	// carId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarID
+	// carClassId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarClassID
+
+	log.Warn("CarInfo",
+		log.String("carNum", carNum),
+		log.Float64("carPos", carData.trackPos),
+	)
+
+}
+
 func (p *CarProc) computeTimes(carData *CarData) {
 	i := len(p.gpd.TrackInfo.Sectors) - 1
 	for carData.trackPos < p.gpd.TrackInfo.Sectors[i].SectorStartPct {
@@ -226,11 +242,13 @@ func (p *CarProc) computeTimes(carData *CarData) {
 		return
 	}
 
-	duration := sector.markStop(p.currentTime)
-	log.Debug("Sector completed",
-		log.String("carNum", carNum),
-		log.Int("sector", carData.currentSector),
-		log.Float64("duration", duration))
+	sector.markStop(p.currentTime)
+
+	// duration := sector.markStop(p.currentTime)
+	// log.Debug("Sector completed",
+	// 	log.String("carNum", carNum),
+	// 	log.Int("sector", carData.currentSector),
+	// 	log.Float64("duration", duration))
 
 	p.bestSectionProc.markSector(sector, carData.currentSector, carClassId, carId)
 
@@ -329,6 +347,13 @@ func (p *CarProc) calcDelta() {
 		} else {
 			carClassId := car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID
 			deltaByCarClassSpeemap := p.speedmapProc.ComputeDeltaTime(carClassId, currentRaceOrder[i].trackPos, car.trackPos)
+			if deltaByCarClassSpeemap < 0 {
+				log.Warn("Negative delta by speedmap",
+					log.String("carNum", car.carDriverProc.GetCurrentDriver(car.carIdx).CarNumber),
+					log.Float64("cifPos", currentRaceOrder[i].trackPos),
+					log.Float64("carPos", car.trackPos),
+					log.Float64("delta", deltaByCarClassSpeemap))
+			}
 			car.interval = deltaByCarClassSpeemap
 		}
 	}

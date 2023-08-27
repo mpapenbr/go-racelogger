@@ -55,6 +55,28 @@ func (dpc *DataProviderClient) UnregisterProvider(eventKey string) error {
 	return err
 }
 
+func (dpc *DataProviderClient) SendExtraInfoFromChannel(eventKey string, rcv chan model.ExtraInfo) {
+
+	go func() {
+		for {
+			s, more := <-rcv
+			ctx := context.Background()
+
+			_, err := dpc.client.Call(ctx, "racelog.dataprovider.store_event_extra_data", nil, wamp.List{eventKey, s}, nil, nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// fmt.Printf("chanValue: %v more: %v\n", s.Timestamp, more)
+			// time.Sleep(100 * time.Millisecond)
+			if !more {
+				fmt.Println("closed channel signaled")
+				return
+			}
+		}
+	}()
+
+}
+
 // recieves data via channel and publishes it on the racelog.public.live.state.<eventKey> topic
 func (dpc *DataProviderClient) PublishStateFromChannel(eventKey string, rcv chan model.StateData) {
 
