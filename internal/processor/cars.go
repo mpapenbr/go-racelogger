@@ -25,6 +25,7 @@ type CarProc struct {
 	currentTime          float64        // current sessionTime at start of this cycle
 	prevSessionTime      float64        // used for computing speed/distance
 	prevLapDistPct       []float32      // data from previous iteration (CarIdxLapDistPct)
+	prevLapPos           []int32        // data from previous iteration (CarIdxLap)
 	carLookup            map[int]*CarData
 	lastStandingsIR      []yaml.ResultsPositions
 
@@ -151,9 +152,16 @@ func (p *CarProc) Process() {
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
 			driver := p.carDriverProc.GetCurrentDriver(int32(idx))
 			speed := p.calcSpeed(carData)
-			carData.speed = speed
+			// use only valid speed values
+			if speed >= 0 {
+				carData.speed = speed
+				// use speed for speedmap only is car is not in pits
+				if carData.state != CarStatePit {
+					p.speedmapProc.Process(carData, driver.CarClassID, driver.CarID)
+				}
+
+			}
 			p.computeTimes(carData)
-			p.speedmapProc.Process(carData, driver.CarClassID, driver.CarID)
 
 			// compute times for car
 			// compute speed for car
@@ -188,6 +196,8 @@ func (p *CarProc) Process() {
 	p.prevSessionTime = currentTime
 	p.prevLapDistPct = make([]float32, len(justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32)))
 	copy(p.prevLapDistPct, justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32))
+	p.prevLapPos = make([]int32, len(justValue(p.api.GetIntValues("CarIdxLap")).([]int32)))
+	copy(p.prevLapPos, justValue(p.api.GetIntValues("CarIdxLap")).([]int32))
 
 }
 
@@ -294,12 +304,32 @@ func (p *CarProc) computeTimes(carData *CarData) {
 }
 
 func (p *CarProc) calcSpeed(carData *CarData) float64 {
+	output := func(f float64) string {
+		return fmt.Sprintf("%.4f", f)
+	}
 	// carData has already recieved current trackPos
 	if len(p.prevLapDistPct) == 0 {
 		return -1
 	}
-	currentTrackPos := carData.trackPos
-	moveDist := deltaDistance(currentTrackPos, gate(float64(p.prevLapDistPct[carData.carIdx])))
+	currentTrackPos := float64(carData.lap) + carData.trackPos
+	prevLap := p.prevLapPos[carData.carIdx]
+	prevTrackPos := float64(p.prevLapPos[carData.carIdx]) + gate(float64(p.prevLapDistPct[carData.carIdx]))
+	if prevLap < 0 || carData.lap < 0 {
+		return -1
+	}
+	moveDist := currentTrackPos - prevTrackPos
+	if moveDist < 0 {
+		log.Warn("Car moved backward???",
+			log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
+			log.Float64("prevTrackPos", prevTrackPos),
+			log.Float64("currentTrackPos", currentTrackPos),
+			log.Float64("dist", moveDist),
+			log.String("prevTrackPos(m)", output(gate(float64(p.prevLapDistPct[carData.carIdx]))*p.gpd.EventDataInfo.TrackLength)),
+			log.String("currentTrackPos(m)", output(carData.trackPos*p.gpd.EventDataInfo.TrackLength)),
+			log.String("dist(m)", output(moveDist*p.gpd.EventDataInfo.TrackLength)),
+		)
+		return -1
+	}
 	deltaTime := p.currentTime - p.prevSessionTime
 	if deltaTime != 0 {
 		if moveDist < p.minMoveDistPct {
@@ -307,13 +337,7 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 			return 0
 		}
 		speed := p.gpd.TrackInfo.Length * moveDist / deltaTime * 3.6
-		// old safe guard from python variant
-		if speed > 400 {
-			log.Warn("Speed > 400",
-				log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
-				log.Float64("speed", speed))
-			return -1
-		}
+
 		return speed
 	} else {
 		log.Debug("Delta time is 0")

@@ -42,6 +42,9 @@ func TestSpeedmapProc_ComputeDeltaTime(t *testing.T) {
 		{"same chunk, cif right behind current", args{0.01, 0.05}, 3.456},
 		{"0.3,0.5", args{0.3, 0.5}, 2.88},
 		{"0.5,0.3", args{0.5, 0.3}, 0.72},
+		{"cif first chunk, current last chunk", args{0.05, 0.95}, 0.36},
+		{"cif last chunk, current first chunk", args{0.95, 0.05}, 3.24},
+		{"tbd", args{0.0, 0.1}, 3.24},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

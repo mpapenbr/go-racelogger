@@ -32,13 +32,13 @@ func newChunkData(id int, keepHistory int, minHist int) *ChunkData {
 	}
 }
 
-func (p *ChunkData) update(trackPos float64) {
+func (p *ChunkData) update(speed float64) {
 	if len(p.history) < p.keepHistory {
-		p.history = append(p.history, trackPos)
+		p.history = append(p.history, speed)
 		p.compute()
 		return
 	}
-	p.history = append(p.history, trackPos)
+	p.history = append(p.history, speed)
 	if len(p.history)%2 == 1 {
 		slices.Sort(p.history)
 		p.history = p.history[1 : len(p.history)-2]
