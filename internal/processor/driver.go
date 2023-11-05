@@ -72,6 +72,7 @@ func (d *CarDriverProc) GetCurrentDriver(carIdx int32) yaml.Drivers {
 
 // gets called when main processor detects new driver data
 func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
+	currentDriverNames := make(map[int]string)
 	for _, v := range y.DriverInfo.Drivers {
 		if !isRealDriver(v) {
 			continue
@@ -89,8 +90,8 @@ func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 			}) {
 				teamMembers = append(teamMembers, newEntry)
 			}
-
 		}
+		currentDriverNames[int(v.CarIdx)] = v.UserName
 	}
 
 	carEntries := []model.CarEntry{}
@@ -126,14 +127,16 @@ func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 		entry := model.CarEntry{Car: car, Team: team, Drivers: drivers}
 		carEntries = append(carEntries, entry)
 	}
-
+	sessionTime := justValue(d.api.GetValue("SessionTime"))
 	data := model.CarData{
 		Type:      int(model.MTCar),
 		Timestamp: float64(time.Now().UnixMilli()),
 		Payload: model.CarPayload{
-			Cars:       collectCars(y.DriverInfo.Drivers),
-			CarClasses: collectCarClasses(y.DriverInfo.Drivers),
-			Entries:    carEntries,
+			Cars:           collectCars(y.DriverInfo.Drivers),
+			CarClasses:     collectCarClasses(y.DriverInfo.Drivers),
+			Entries:        carEntries,
+			CurrentDrivers: currentDriverNames,
+			SessionTime:    sessionTime.(float64),
 		},
 	}
 	d.output <- data
