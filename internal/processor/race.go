@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/mpapenbr/go-racelogger/log"
-	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
+	"github.com/mpapenbr/goirsdk/irsdk"
 )
 
 type raceState interface {

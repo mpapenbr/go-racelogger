@@ -13,12 +13,11 @@ require (
 
 require (
 	github.com/google/uuid v1.4.0
+	github.com/mpapenbr/goirsdk v0.4.0
 	github.com/mpapenbr/iracelog-service-manager-go v0.8.2-0.20231029105734-d13e016e13f7
 	github.com/samber/lo v1.38.1
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	golang.org/x/mod v0.13.0
-	golang.org/x/sys v0.13.0
-	golang.org/x/text v0.13.0
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
+	golang.org/x/mod v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -26,6 +25,8 @@ require (
 	github.com/sagikazarmark/locafero v0.3.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 )
 
 require (

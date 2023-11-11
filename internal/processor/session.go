@@ -1,7 +1,7 @@
 package processor
 
 import (
-	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
+	"github.com/mpapenbr/goirsdk/irsdk"
 )
 
 func SessionManifest() []string {

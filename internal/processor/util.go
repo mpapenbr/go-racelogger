@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/mpapenbr/go-racelogger/log"
-	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
-	"github.com/mpapenbr/go-racelogger/pkg/irsdk/yaml"
+	"github.com/mpapenbr/goirsdk/irsdk"
+	"github.com/mpapenbr/goirsdk/yaml"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"golang.org/x/exp/slices"
 )

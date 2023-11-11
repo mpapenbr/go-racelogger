@@ -9,7 +9,7 @@ import (
 	"github.com/mpapenbr/go-racelogger/pkg/util"
 
 	// irsdk "github.com/mpapenbr/goirsdk"
-	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
+	"github.com/mpapenbr/goirsdk/irsdk"
 
 	"github.com/spf13/cobra"
 )

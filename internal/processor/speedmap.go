@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"github.com/mpapenbr/go-racelogger/log"
-	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
+	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"

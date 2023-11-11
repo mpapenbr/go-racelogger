@@ -5,7 +5,7 @@ import (
 
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
-	"github.com/mpapenbr/go-racelogger/pkg/irsdk"
+	"github.com/mpapenbr/goirsdk/irsdk"
 )
 
 func WaitForSimulation() bool {
