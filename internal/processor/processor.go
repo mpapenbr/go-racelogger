@@ -9,6 +9,7 @@ import (
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
+	goyaml "gopkg.in/yaml.v3"
 )
 
 type GenericMessage map[string]interface{}
@@ -172,10 +173,15 @@ func (p *Processor) Process() {
 		!cmp.Equal(y.DriverInfo, p.lastDriverInfo) {
 
 		log.Info("DriverInfo changed, updating state")
+		var freshYaml yaml.IrsdkYaml
+		if err := goyaml.Unmarshal([]byte(p.api.GetYamlString()), &freshYaml); err != nil {
+			log.Error("Error unmarshalling irsdk yaml", log.ErrorField(err))
+			return
+		}
 		// fmt.Printf("Delta: %v\n", cmp.Diff(y.DriverInfo, p.lastDriverInfo))
 		// p.lastDriverInfo = reflect.ValueOf(y.DriverInfo).Interface().(yaml.DriverInfo)
-		p.lastDriverInfo = y.DriverInfo
-		p.carDriverProc.Process(y)
+		p.lastDriverInfo = freshYaml.DriverInfo
+		p.carDriverProc.Process(&freshYaml)
 	}
 
 	if time.Now().After(p.lastTimeSendState.Add(p.options.StatePublishInterval)) {
