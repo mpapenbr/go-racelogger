@@ -2,6 +2,7 @@ package processor
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"sort"
 
@@ -40,10 +41,10 @@ type finishMarker struct {
 	ref    float64 // lap + trackPos at the time the checkered flag was waved
 }
 
-var baseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
+var oldBaseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
 
 // this will become the new baseAttributes later. "static" data will be removed
-var newBaseAttributes = []string{"state", "carIdx", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
+var baseAttributes = []string{"state", "carIdx", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
 
 func CarManifest(gpd *GlobalProcessingData) []string {
 	// create copy of baseAttributes
@@ -52,17 +53,17 @@ func CarManifest(gpd *GlobalProcessingData) []string {
 	for i := range gpd.TrackInfo.Sectors {
 		ret = append(ret, fmt.Sprintf("s%d", i+1))
 	}
-	if gpd.EventDataInfo.NumCarClasses == 1 {
-		idx := slices.Index(ret, "carClass")
-		ret = slices.Delete(ret, idx, idx+1)
+	// if gpd.EventDataInfo.NumCarClasses == 1 {
+	// 	idx := slices.Index(ret, "carClass")
+	// 	ret = slices.Delete(ret, idx, idx+1)
 
-		idx = slices.Index(ret, "pic")
-		ret = slices.Delete(ret, idx, idx+1)
-	}
-	if gpd.EventDataInfo.TeamRacing == 0 {
-		idx := slices.Index(ret, "teamName")
-		ret = slices.Delete(ret, idx, idx+1)
-	}
+	// 	idx = slices.Index(ret, "pic")
+	// 	ret = slices.Delete(ret, idx, idx+1)
+	// }
+	// if gpd.EventDataInfo.TeamRacing == 0 {
+	// 	idx := slices.Index(ret, "teamName")
+	// 	ret = slices.Delete(ret, idx, idx+1)
+	// }
 
 	return ret
 }
@@ -318,7 +319,8 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 		return -1
 	}
 	moveDist := currentTrackPos - prevTrackPos
-	if moveDist < 0 {
+	// issue warning if car moved backward more than minMoveDistPct
+	if moveDist < 0 && math.Abs(moveDist) > p.minMoveDistPct {
 		log.Warn("Car moved backward???",
 			log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
 			log.Float64("prevTrackPos", prevTrackPos),

@@ -82,6 +82,11 @@ func (r *Racelogger) Close() {
 }
 
 func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error {
+	// s := r.api.GetYamlString()
+	// os.WriteFile("test.yaml", []byte(s), 0644)
+
+	// fmt.Printf("Yaml: %v\n", s)
+
 	irYaml, err := r.api.GetYaml()
 	if err != nil {
 		return err
@@ -218,6 +223,9 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 						log.Debug("Initializing irsdk api")
 
 						r.api = irsdk.NewIrsdk()
+						log.Debug("waiting some seconds before start")
+						time.Sleep(5 * time.Second)
+
 						r.api.WaitForValidData()
 						// as long as there are no entries we have to try again
 						for len(r.api.GetValueKeys()) == 0 {
@@ -259,6 +267,7 @@ func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 				if !r.simIsRunning {
 					continue
 				}
+
 				r.api.GetData()
 
 				if work, err := r.api.GetYaml(); err == nil {
