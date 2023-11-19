@@ -3,7 +3,6 @@ package processor
 import (
 	"errors"
 	"fmt"
-	"math"
 	"regexp"
 	"strconv"
 	"time"
@@ -16,6 +15,16 @@ import (
 )
 
 var ErrUnknownValueWithUnit = errors.New("Unknown value with unit format")
+
+const (
+	INVALID   = "INVALID"
+	PREP      = "PREP"
+	PARADE    = "PARADE"
+	GREEN     = "GREEN"
+	YELLOW    = "YELLOW"
+	CHECKERED = "CHECKERED"
+	WHITE     = "WHITE"
+)
 
 // returns time as unix seconds and microseconds as decimal part
 func float64Timestamp(t time.Time) float64 {
@@ -32,29 +41,30 @@ func getRaceState(api *irsdk.Irsdk) string {
 	return computeFlagState(state, int64(flags))
 }
 
+//nolint:cyclop,gocritic,nestif // ok this way
 func computeFlagState(state int32, flags int64) string {
 	if state == int32(irsdk.StateRacing) {
 		if flags&int64(irsdk.FlagStartHidden) == int64(irsdk.FlagStartHidden) {
-			return "GREEN"
+			return GREEN
 		} else if flags>>16&int64(irsdk.FlagGreen) == int64(irsdk.FlagGreen) {
-			return "GREEN"
+			return GREEN
 		} else if flags>>16&int64(irsdk.FlagYello) == int64(irsdk.FlagYello) {
-			return "YELLOW"
+			return YELLOW
 		} else if flags>>16&int64(irsdk.FlagCheckered) == int64(irsdk.FlagCheckered) {
-			return "CHECKERED"
+			return CHECKERED
 		} else if flags>>16&int64(irsdk.FlagWhite) == int64(irsdk.FlagWhite) {
-			return "WHITE"
+			return WHITE
 		}
 	} else if state == int32(irsdk.StateCheckered) {
-		return "CHECKERED"
+		return CHECKERED
 	} else if state == int32(irsdk.StateCoolDown) {
-		return "CHECKERED"
+		return CHECKERED
 	} else if state == int32(irsdk.StateGetInCar) {
-		return "PREP"
+		return PREP
 	} else if state == int32(irsdk.StateParadeLaps) {
-		return "PARADE"
+		return PARADE
 	} else if state == int32(irsdk.StateInvalid) {
-		return "INVALID"
+		return INVALID
 	}
 	return "NONE"
 }
@@ -64,6 +74,7 @@ func shouldRecord(api *irsdk.Irsdk) bool {
 	return slices.Contains([]string{"GREEN", "YELLOW", "CHECKERED"}, getRaceState(api))
 }
 
+//nolint:gocritic // this is ok
 func isRealDriver(d yaml.Drivers) bool {
 	return d.IsSpectator == 0 && d.CarIsPaceCar == 0
 }
@@ -94,15 +105,6 @@ func deltaDistance(a, b float64) float64 {
 		return a - b
 	} else {
 		return a + 1 - b
-	}
-}
-
-func deltaToPrev(a, b float64) float64 {
-	d := math.Abs(a - b)
-	if d > 0.5 {
-		return 1 - d
-	} else {
-		return d
 	}
 }
 
@@ -166,10 +168,12 @@ func collectCarClasses(drivers []yaml.Drivers) []model.CarClass {
 	return ret
 }
 
-// collects the car informations from irdsk DriverInfo.Drivers (which is passed in as drivers argument)
+// collects the car informations from irdsk DriverInfo.Drivers
+// (which is passed in as drivers argument)
 // Kind of confusing:
 //   - adjustments are made to a car, but the attributes are prefixed 'CarClass'
-//   - CarClassDryTireSetLimit is delivered as percent, but it contains the number of tire sets available
+//   - CarClassDryTireSetLimit is delivered as percent, but it contains the number
+//     of tire sets available
 //   - CarClassMaxFuelPct value is 0.0-1.0
 func collectCars(drivers []yaml.Drivers) []model.CarInfo {
 	classLookup := carClassesLookup(drivers)
@@ -192,6 +196,7 @@ func collectCars(drivers []yaml.Drivers) []model.CarInfo {
 			}
 		}
 	}
+	//nolint:gocritic // this is ok
 	for _, v := range carLookup {
 		ret = append(ret, v)
 	}

@@ -71,7 +71,9 @@ type SpeedmapProc struct {
 	carLookup       map[int][]*ChunkData // car idx -> chunk data
 }
 
-func NewSpeedmapProc(api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData) *SpeedmapProc {
+func NewSpeedmapProc(
+	api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData,
+) *SpeedmapProc {
 	return &SpeedmapProc{
 		api:            api,
 		chunkSize:      chunkSize,
@@ -79,10 +81,11 @@ func NewSpeedmapProc(api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData)
 		carClassLookup: make(map[int][]*ChunkData),
 		carIdLookup:    make(map[int][]*ChunkData),
 		carLookup:      make(map[int][]*ChunkData),
-		gpd:            gpd}
+		gpd:            gpd,
+	}
 }
 
-func (s *SpeedmapProc) Process(carData *CarData, carClassId int, carId int) {
+func (s *SpeedmapProc) Process(carData *CarData, carClassId, carId int) {
 	s.ensureLookup(s.carLookup, int(carData.carIdx))
 	s.ensureLookup(s.carClassLookup, carClassId)
 	s.ensureLookup(s.carLookup, carId)
@@ -96,7 +99,9 @@ func (s *SpeedmapProc) SetLeaderTrackPos(trackPos float64) {
 	s.leaderTrackPos = trackPos
 }
 
-func (s *SpeedmapProc) ComputeDeltaTime(carClassId int, trackPosCarInFront, trackPosCurrentCar float64) float64 {
+func (s *SpeedmapProc) ComputeDeltaTime(
+	carClassId int, trackPosCarInFront, trackPosCurrentCar float64,
+) float64 {
 	idxCarInFront := s.getChunkIdx(trackPosCarInFront)
 	idxCurrentCar := s.getChunkIdx(trackPosCurrentCar)
 	if _, ok := s.carClassLookup[carClassId]; !ok {
@@ -119,7 +124,6 @@ func (s *SpeedmapProc) ComputeDeltaTime(carClassId int, trackPosCarInFront, trac
 			chunkData = append(chunkData, v)
 		}
 	} else {
-
 		for _, v := range s.carClassLookup[carClassId][idxCurrentCar : idxCarInFront+1] {
 			chunkData = append(chunkData, v)
 		}
@@ -140,7 +144,8 @@ func (s *SpeedmapProc) ComputeDeltaTime(carClassId int, trackPosCarInFront, trac
 		return delta
 	}
 	// for the first item: calculate the time from trackPosCurrentCar to end of chunk
-	metersToEndOfChunk := float64((idxCurrentCar+1)*s.chunkSize) - (trackPosCurrentCar * s.gpd.TrackInfo.Length)
+	metersToEndOfChunk := float64((idxCurrentCar+1)*s.chunkSize) -
+		(trackPosCurrentCar * s.gpd.TrackInfo.Length)
 	delta := metersToEndOfChunk / chunkData[0].avg * 3.6
 	totalDelta := delta
 
@@ -152,7 +157,8 @@ func (s *SpeedmapProc) ComputeDeltaTime(carClassId int, trackPosCarInFront, trac
 	}
 
 	// for the last item: calculate the time from start of chunk to trackPosCarInFront
-	metersFromStartOfChunk := trackPosCarInFront*s.gpd.TrackInfo.Length - (float64(idxCarInFront * s.chunkSize))
+	metersFromStartOfChunk := trackPosCarInFront*s.gpd.TrackInfo.Length -
+		(float64(idxCarInFront * s.chunkSize))
 	delta = metersFromStartOfChunk / chunkData[len(chunkData)-1].avg * 3.6
 	totalDelta += delta
 	return totalDelta
@@ -194,7 +200,6 @@ func (s *SpeedmapProc) computeLaptime(chunks []*ChunkData) float64 {
 		return acc + float64(s.chunkSize)/cd.avg*3.6
 	}, 0)
 	return ret
-
 }
 
 func (s *SpeedmapProc) hasValidAvgs(chunks []*ChunkData) bool {
@@ -202,9 +207,9 @@ func (s *SpeedmapProc) hasValidAvgs(chunks []*ChunkData) bool {
 		return cd.avg == 0
 	}) == false
 }
+
 func (s *SpeedmapProc) ensureLookup(lookup map[int][]*ChunkData, id int) {
 	if _, ok := lookup[id]; !ok {
-
 		lookup[id] = make([]*ChunkData, s.numChunks)
 		for i := 0; i < s.numChunks; i++ {
 			lookup[id][i] = newChunkData(i, 11, 3)
@@ -216,7 +221,6 @@ func (s *SpeedmapProc) getChunkIdx(trackPos float64) int {
 	if trackPos > 1 {
 		return 0
 	} else {
-
 		idx := int(math.Floor(trackPos * s.gpd.TrackInfo.Length / float64(s.chunkSize)))
 		if idx >= s.numChunks {
 			return idx - 1

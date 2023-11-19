@@ -30,7 +30,6 @@ func (ci *carInit) Update(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
 		cd.setState(&carOut{})
-		// cd.prepareMsgData()
 		return
 	}
 	if cw.pit {
@@ -226,12 +225,18 @@ func (cd *CarData) prepareMsgData() {
 	cd.msgData["dist"] = cd.dist
 	cd.msgData["interval"] = cd.interval
 	cd.msgData["gap"] = cd.gap
-	cd.msgData["last"] = []interface{}{cd.laptiming.lap.duration.time, cd.laptiming.lap.duration.marker}
+	cd.msgData["last"] = []interface{}{
+		cd.laptiming.lap.duration.time,
+		cd.laptiming.lap.duration.marker,
+	}
 	cd.msgData["best"] = []interface{}{cd.bestLap.time, cd.bestLap.marker}
 	cd.msgData["state"] = cd.state
 
 	for i := 0; i < len(cd.gpd.TrackInfo.Sectors); i++ {
-		cd.msgData[fmt.Sprintf("s%d", i+1)] = []interface{}{cd.laptiming.sectors[i].duration.time, cd.laptiming.sectors[i].duration.marker}
+		cd.msgData[fmt.Sprintf("s%d", i+1)] = []interface{}{
+			cd.laptiming.sectors[i].duration.time,
+			cd.laptiming.sectors[i].duration.marker,
+		}
 	}
 
 	cd.msgData["userName"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).UserName
@@ -241,7 +246,8 @@ func (cd *CarData) prepareMsgData() {
 
 	cd.msgData["carClass"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).CarClassShortName
 	if cd.msgData["carClass"] == "" {
-		cd.msgData["carClass"] = fmt.Sprintf("CarClass %d", cd.carDriverProc.GetCurrentDriver(cd.carIdx).CarClassID)
+		cd.msgData["carClass"] = fmt.Sprintf("CarClass %d",
+			cd.carDriverProc.GetCurrentDriver(cd.carIdx).CarClassID)
 	}
 }
 
@@ -290,6 +296,7 @@ func (cd *CarData) setStandingsLaptime(t float64) {
 	cd.laptiming.lap.duration.time = t
 }
 
+//nolint:lll // wrapping is not helpful here
 func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {
 	cw := carWorkData{}
 	cw.carIdx = cd.carIdx

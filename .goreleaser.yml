@@ -9,9 +9,11 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    goos:      
+    goos:
       - windows
-      
+    goarch:
+      - amd64
+
     ignore:
       - goos: darwin
         goarch: "386"
@@ -31,7 +33,6 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
-
 
 checksum:
   name_template: "checksums.txt"
