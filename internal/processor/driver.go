@@ -24,7 +24,6 @@ type CarDriverProc struct {
 }
 
 func NewCarDriverProc(api *irsdk.Irsdk, output chan model.CarData) *CarDriverProc {
-
 	return newCarDriverProcInternal(api, output)
 }
 
@@ -63,7 +62,6 @@ func (d *CarDriverProc) init(y *yaml.IrsdkYaml) {
 			vCar = append(vCar, newEntry)
 		}
 	}
-
 }
 
 func (d *CarDriverProc) GetCurrentDriver(carIdx int32) yaml.Drivers {

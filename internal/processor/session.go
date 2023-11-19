@@ -5,7 +5,20 @@ import (
 )
 
 func SessionManifest() []string {
-	return []string{"sessionNum", "sessionTime", "timeRemain", "lapsRemain", "flagState", "timeOfDay", "airTemp", "airDensity", "airPressure", "trackTemp", "windDir", "windVel"}
+	return []string{
+		"sessionNum",
+		"sessionTime",
+		"timeRemain",
+		"lapsRemain",
+		"flagState",
+		"timeOfDay",
+		"airTemp",
+		"airDensity",
+		"airPressure",
+		"trackTemp",
+		"windDir",
+		"windVel",
+	}
 }
 
 type SessionProc struct {
@@ -13,7 +26,6 @@ type SessionProc struct {
 }
 
 func NewSessionProc(api *irsdk.Irsdk) *SessionProc {
-
 	return &SessionProc{api: api}
 }
 
@@ -25,8 +37,8 @@ func (s *SessionProc) CreatePayload() []interface{} {
 	}
 	return ret
 }
-func (s *SessionProc) CreateOutput() GenericMessage {
 
+func (s *SessionProc) CreateOutput() GenericMessage {
 	msg := GenericMessage{}
 	msg["sessionNum"] = justValue(s.api.GetValue("SessionNum"))
 	msg["sessionTime"] = justValue(s.api.GetValue("SessionTime"))
@@ -43,5 +55,4 @@ func (s *SessionProc) CreateOutput() GenericMessage {
 	flags, _ := s.api.GetIntValue("SessionFlags")
 	msg["flagState"] = computeFlagState(state, int64(flags))
 	return msg
-
 }

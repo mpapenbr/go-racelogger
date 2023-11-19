@@ -67,13 +67,14 @@ func CarManifest(gpd *GlobalProcessingData) []string {
 
 	return ret
 }
+
 func NewCarProc(
 	api *irsdk.Irsdk,
 	gpd *GlobalProcessingData,
 	carDriverProc *CarDriverProc,
 	pitBoundaryProc *PitBoundaryProc,
-	speedmapProc *SpeedmapProc) *CarProc {
-
+	speedmapProc *SpeedmapProc,
+) *CarProc {
 	ret := &CarProc{
 		api:             api,
 		gpd:             gpd,
@@ -87,7 +88,6 @@ func NewCarProc(
 }
 
 func (p *CarProc) init() {
-
 	collectInts := func(m map[int32][]yaml.Drivers) []int {
 		ret := make([]int, 0)
 		for k := range m {
@@ -104,7 +104,6 @@ func (p *CarProc) init() {
 		collectInts(p.carDriverProc.byCarClassIdLookup),
 		collectInts(p.carDriverProc.byCarIdLookup),
 		func(carClassId, carId int) []*CarLaptiming {
-
 			work := make([]*CarLaptiming, 0)
 			for i, v := range p.carLookup {
 				curEntry := p.carDriverProc.GetCurrentDriver(int32(i))
@@ -199,7 +198,6 @@ func (p *CarProc) Process() {
 	copy(p.prevLapDistPct, justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32))
 	p.prevLapPos = make([]int32, len(justValue(p.api.GetIntValues("CarIdxLap")).([]int32)))
 	copy(p.prevLapPos, justValue(p.api.GetIntValues("CarIdxLap")).([]int32))
-
 }
 
 func (p *CarProc) carInfo(carIdx int) {
@@ -212,7 +210,6 @@ func (p *CarProc) carInfo(carIdx int) {
 		log.String("carNum", carNum),
 		log.Float64("carPos", carData.trackPos),
 	)
-
 }
 
 func (p *CarProc) computeTimes(carData *CarData) {
@@ -296,7 +293,6 @@ func (p *CarProc) computeTimes(carData *CarData) {
 					log.Info("Car WON the race", log.String("carNum", carNum))
 					return
 				}
-
 			}
 		}
 		carData.startLap(p.currentTime)
@@ -414,7 +410,6 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 	}
 
 	p.markBestLaps()
-
 }
 
 func (p *CarProc) markBestLaps() {
@@ -431,14 +426,12 @@ func (p *CarProc) markBestLaps() {
 		return
 	}
 	sortByBestLap := func(a, b *CarData) int {
-
 		if a.bestLap.time < b.bestLap.time {
 			return -1
 		} else if a.bestLap.time > b.bestLap.time {
 			return 1
 		}
 		return 0
-
 	}
 	debugBest := func(title string, car []*CarData) {
 		for _, item := range car {
@@ -540,7 +533,6 @@ func (p *CarProc) RaceStarts() {
 	// for _, idx := range p.getProcessableCarIdxs() {
 	// 	p.carLookup[idx].startLap(p.currentTime)
 	// }
-
 }
 
 func (p *CarProc) CheckeredFlagIssued() {

@@ -12,11 +12,13 @@ import (
 	goyaml "gopkg.in/yaml.v3"
 )
 
-type GenericMessage map[string]interface{}
-type GlobalProcessingData struct {
-	TrackInfo     model.TrackInfo
-	EventDataInfo model.EventDataInfo
-}
+type (
+	GenericMessage       map[string]interface{}
+	GlobalProcessingData struct {
+		TrackInfo     model.TrackInfo
+		EventDataInfo model.EventDataInfo
+	}
+)
 
 type Options struct {
 	StatePublishInterval    time.Duration
@@ -43,11 +45,13 @@ func WithStatePublishInterval(d time.Duration) OptionsFunc {
 		o.StatePublishInterval = d
 	}
 }
+
 func WithSpeedmapPublishInterval(d time.Duration) OptionsFunc {
 	return func(o *Options) {
 		o.SpeedmapPublishInterval = d
 	}
 }
+
 func WithCarDataPublishInterval(d time.Duration) OptionsFunc {
 	return func(o *Options) {
 		o.CarDataPublishInterval = d
@@ -99,8 +103,8 @@ func NewProcessor(
 	speedmapOutput chan model.SpeedmapData,
 	cardataOutput chan model.CarData,
 	extraInfoOutput chan model.ExtraInfo,
-	options ...OptionsFunc) *Processor {
-
+	options ...OptionsFunc,
+) *Processor {
 	opts := defaultOptions()
 	for _, o := range options {
 		o(opts)
@@ -132,7 +136,6 @@ func NewProcessor(
 	}
 	ret.init()
 	return &ret
-
 }
 
 func (p *Processor) init() {
@@ -150,9 +153,10 @@ func (p *Processor) init() {
 				}
 			}
 			pitInfo := model.PitInfo{
-				Entry:      p.pitBoundaryProc.pitEntry.middle,
-				Exit:       p.pitBoundaryProc.pitExit.middle,
-				LaneLength: pitLaneLength(p.pitBoundaryProc.pitEntry.middle, p.pitBoundaryProc.pitExit.middle),
+				Entry: p.pitBoundaryProc.pitEntry.middle,
+				Exit:  p.pitBoundaryProc.pitExit.middle,
+				LaneLength: pitLaneLength(
+					p.pitBoundaryProc.pitEntry.middle, p.pitBoundaryProc.pitExit.middle),
 			}
 			p.raceProc.carProc.gpd.TrackInfo.Pit = &pitInfo
 			p.extraInfoOutput <- model.ExtraInfo{Track: p.raceProc.carProc.gpd.TrackInfo}
@@ -188,14 +192,11 @@ func (p *Processor) Process() {
 		p.sendStateMessage()
 	}
 	if time.Now().After(p.lastTimeSendSpeedmap.Add(p.options.SpeedmapPublishInterval)) {
-
 		p.sendSpeedmapMessage()
 	}
-
 }
 
 func (p *Processor) sendSpeedmapMessage() {
-
 	data := model.SpeedmapData{
 		Type:      int(model.MTSpeedmap),
 		Timestamp: float64Timestamp(time.Now()),
@@ -205,11 +206,9 @@ func (p *Processor) sendSpeedmapMessage() {
 	// log.Debug("About to send new speedmap data", log.Any("msg", data))
 	p.speedmapOutput <- data
 	p.lastTimeSendSpeedmap = time.Now()
-
 }
 
 func (p *Processor) sendStateMessage() {
-
 	data := model.StateData{
 		Type:      int(model.MTState),
 		Timestamp: float64Timestamp(time.Now()),

@@ -44,7 +44,7 @@ type RaceRun struct{}
 func (rr *RaceRun) Enter() { log.Info("Entering state: RaceRun") }
 func (rr *RaceRun) Exit()  { log.Info("Leaving state: RaceRun") }
 
-// as long as we don't dectect the checkered flag we stay in this state
+// as long as we don't detect the checkered flag we stay in this state
 func (rr *RaceRun) Update(rp *RaceProc) {
 	sessionSate := justValue(rp.api.GetIntValue("SessionState")).(int32)
 	if sessionSate == int32(irsdk.StateCheckered) {
@@ -69,7 +69,6 @@ func (rf *RaceFinishing) Update(rp *RaceProc) {
 		return
 	}
 	rp.carProc.Process()
-
 }
 
 type RaceCooldown struct{}
@@ -83,7 +82,6 @@ func (rc *RaceCooldown) Update(rp *RaceProc) {
 		return
 	}
 	rp.carProc.Process()
-
 }
 
 type RaceDone struct{}

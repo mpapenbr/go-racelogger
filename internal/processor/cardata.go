@@ -43,7 +43,6 @@ func (ci *carInit) Update(cd *CarData, cw *carWorkData) {
 		return
 	}
 	cd.prepareMsgData()
-
 }
 
 type carRun struct{}
@@ -66,22 +65,24 @@ func (cr *carRun) Update(cd *CarData, cw *carWorkData) {
 		cd.setState(&carPit{})
 		return
 	}
-
 }
 
-type carSlow struct{}
-type carPit struct{}
+type (
+	carSlow struct{}
+	carPit  struct{}
+)
 
 func (cp *carPit) Enter(cd *CarData) {
 	log.Info("Entering state: carPit")
 	cd.pitBoundaryProc.processPitEntry(cd.trackPos)
 }
+
 func (cp *carPit) Exit(cd *CarData) {
 	log.Info("Leaving state: carPit")
 	cd.pitBoundaryProc.processPitExit(cd.trackPos)
 }
-func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 
+func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
 		cd.setState(&carOut{})
@@ -103,7 +104,6 @@ func (cf *carFinished) Exit(cd *CarData)  { log.Info("Leaving state: carFinished
 func (cf *carFinished) Update(cd *CarData, cw *carWorkData) {
 	// do nothing - final state
 	cd.state = CarStateFinish
-
 }
 
 type carOut struct{}
@@ -125,7 +125,6 @@ func (co *carOut) Update(cd *CarData, cw *carWorkData) {
 			return
 		}
 	}
-
 }
 
 // contains data extracted from irsdk that needs to be processed by the carState
@@ -175,7 +174,8 @@ func NewCarData(
 	carIdx int32,
 	carDriverProc *CarDriverProc,
 	pitBoundaryProc *PitBoundaryProc,
-	gpd *GlobalProcessingData) *CarData {
+	gpd *GlobalProcessingData,
+) *CarData {
 	laptiming := NewCarLaptiming(len(gpd.TrackInfo.Sectors))
 	ret := CarData{
 		carIdx:          carIdx,
@@ -196,7 +196,6 @@ func NewCarData(
 func (cd *CarData) PreProcess(api *irsdk.Irsdk) {
 	cw := cd.extractIrsdkData(api)
 	cd.currentState.Update(cd, cw)
-
 }
 
 func (cd *CarData) PostProcess() {
@@ -243,7 +242,6 @@ func (cd *CarData) prepareMsgData() {
 	if cd.msgData["carClass"] == "" {
 		cd.msgData["carClass"] = fmt.Sprintf("CarClass %d", cd.carDriverProc.GetCurrentDriver(cd.carIdx).CarClassID)
 	}
-
 }
 
 // return true if sector was unintialized and has been started
@@ -260,6 +258,7 @@ func (cd *CarData) startSector(sectorNum int, t float64) {
 	cd.currentSector = sectorNum
 	cd.laptiming.sectors[sectorNum].markStart(t)
 }
+
 func (cd *CarData) stopSector(sectorNum int, t float64) float64 {
 	return cd.laptiming.sectors[sectorNum].markStop(t)
 }
@@ -273,9 +272,11 @@ func (cd *CarData) markSectorsAsOld() {
 func (cd *CarData) startLap(t float64) {
 	cd.laptiming.lap.markStart(t)
 }
+
 func (cd *CarData) stopLap(t float64) float64 {
 	return cd.laptiming.lap.markStop(t)
 }
+
 func (cd *CarData) isLapStarted() bool {
 	return cd.laptiming.lap.isStarted()
 }
@@ -283,6 +284,7 @@ func (cd *CarData) isLapStarted() bool {
 func (cd *CarData) useOwnLaptime() {
 	cd.lastLap.time = cd.laptiming.lap.duration.time
 }
+
 func (cd *CarData) setStandingsLaptime(t float64) {
 	cd.laptiming.lap.duration.time = t
 }

@@ -34,18 +34,19 @@ type SectionTiming struct {
 }
 
 func defaultSectionTiming() SectionTiming {
-
 	return SectionTiming{startTime: -1, stopTime: -1, duration: TimeWithMarker{time: -1, marker: ""}, personalBest: math.MaxFloat64}
 }
 
 func (s *SectionTiming) markStart(t float64) {
 	s.startTime = t
 }
+
 func (s *SectionTiming) markStop(t float64) float64 {
 	s.stopTime = t
 	s.duration = TimeWithMarker{time: s.stopTime - s.startTime, marker: ""}
 	return s.duration.time
 }
+
 func (s *SectionTiming) markDuration(marker string) {
 	s.duration.marker = marker
 }
@@ -63,20 +64,22 @@ func NewCarLaptiming(numSectors int) *CarLaptiming {
 	lap := defaultSectionTiming()
 	return &CarLaptiming{
 		lap:     &lap,
-		sectors: sectors}
+		sectors: sectors,
+	}
 }
 
 // an argument of -1 means: don't evaluate
-type CollectCarLaptiming func(carClassId, carId int) []*CarLaptiming
-type BestSectionProc struct {
-	sectors          []map[string]float64
-	lap              map[string]float64
-	collectFromOther CollectCarLaptiming
-}
+type (
+	CollectCarLaptiming func(carClassId, carId int) []*CarLaptiming
+	BestSectionProc     struct {
+		sectors          []map[string]float64
+		lap              map[string]float64
+		collectFromOther CollectCarLaptiming
+	}
+)
 
 func NewBestSectionProc(numSectors int, carClassIds, carIds []int, collector CollectCarLaptiming) *BestSectionProc {
 	initData := func() map[string]float64 {
-
 		ret := map[string]float64{}
 		ret["overall"] = math.MaxFloat64
 
@@ -97,7 +100,6 @@ func NewBestSectionProc(numSectors int, carClassIds, carIds []int, collector Col
 		lap:              initData(),
 		collectFromOther: collector,
 	}
-
 }
 
 func (b *BestSectionProc) markSector(st *SectionTiming, numSector int, carClassId int, carId int) string {
@@ -248,5 +250,4 @@ func (b *BestSectionProc) markInternal(
 	} else {
 		return st.duration.marker
 	}
-
 }
