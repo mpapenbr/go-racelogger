@@ -92,8 +92,18 @@ func (rd *RaceDone) Update(rp *RaceProc) {
 	rp.onRaceDone()
 }
 
-func NewRaceProc(api *irsdk.Irsdk, carProc *CarProc, messageProc *MessageProc, raceDoneCallback func()) *RaceProc {
-	ret := RaceProc{api: api, carProc: carProc, messageProc: messageProc, RaceDoneCallback: raceDoneCallback}
+func NewRaceProc(
+	api *irsdk.Irsdk,
+	carProc *CarProc,
+	messageProc *MessageProc,
+	raceDoneCallback func(),
+) *RaceProc {
+	ret := RaceProc{
+		api:              api,
+		carProc:          carProc,
+		messageProc:      messageProc,
+		RaceDoneCallback: raceDoneCallback,
+	}
 	ret.currentState = &RaceInvalid{}
 	return &ret
 }

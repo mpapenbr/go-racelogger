@@ -175,8 +175,9 @@ func NewCarData(
 	carDriverProc *CarDriverProc,
 	pitBoundaryProc *PitBoundaryProc,
 	gpd *GlobalProcessingData,
+	reportLapStatus ReportTimingStatus,
 ) *CarData {
-	laptiming := NewCarLaptiming(len(gpd.TrackInfo.Sectors))
+	laptiming := NewCarLaptiming(len(gpd.TrackInfo.Sectors), reportLapStatus)
 	ret := CarData{
 		carIdx:          carIdx,
 		currentState:    &carInit{},

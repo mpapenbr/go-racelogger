@@ -1,6 +1,10 @@
 package processor
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/mpapenbr/go-racelogger/log"
+)
 
 func MessageManifest() []string {
 	return []string{"type", "subType", "carIdx", "carNum", "carClass", "msg"}
@@ -26,6 +30,7 @@ func (p *MessageProc) Clear() {
 }
 
 func (p *MessageProc) DriverEnteredCar(carIdx int) {
+	log.Debug("Driver entered car", log.Int("carIdx", carIdx))
 	p.buffer = append(p.buffer, GenericMessage{
 		"type":     "Pits",
 		"subType":  "Driver",
@@ -35,6 +40,22 @@ func (p *MessageProc) DriverEnteredCar(carIdx int) {
 		"msg": fmt.Sprintf("#%s %s entered the car",
 			p.carDriverProc.GetCurrentDriver(int32(carIdx)).CarNumber,
 			p.carDriverProc.GetCurrentDriver(int32(carIdx)).UserName,
+		),
+	})
+}
+
+func (p *MessageProc) ReportDriverLap(carIdx int, twm TimeWithMarker) {
+	log.Debug("Driver entered car", log.Int("carIdx", carIdx))
+	p.buffer = append(p.buffer, GenericMessage{
+		"type":     "Timing",
+		"subType":  "Driver",
+		"carIdx":   carIdx,
+		"carNum":   p.carDriverProc.GetCurrentDriver(int32(carIdx)).CarNumber,
+		"carClass": p.carDriverProc.GetCurrentDriver(int32(carIdx)).CarClassShortName,
+		"msg": fmt.Sprintf("#%s (%s) new %s",
+			p.carDriverProc.GetCurrentDriver(int32(carIdx)).CarNumber,
+			p.carDriverProc.GetCurrentDriver(int32(carIdx)).UserName,
+			twm.String(),
 		),
 	})
 }
@@ -49,6 +70,7 @@ func (p *MessageProc) RaceStarts() {
 		"msg":      "Race start",
 	})
 }
+
 func (p *MessageProc) CheckeredFlagIssued() {
 	p.buffer = append(p.buffer, GenericMessage{
 		"type":     "Timing",
@@ -72,7 +94,6 @@ func (p *MessageProc) RecordingDone() {
 }
 
 func (p *MessageProc) CreatePayload() [][]interface{} {
-
 	payload := make([][]interface{}, len(p.buffer))
 	manifest := MessageManifest()
 	createMessage := func(msgData GenericMessage) []interface{} {

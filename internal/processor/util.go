@@ -57,13 +57,11 @@ func computeFlagState(state int32, flags int64) string {
 		return "INVALID"
 	}
 	return "NONE"
-
 }
 
 // returns true if we should record data
 func shouldRecord(api *irsdk.Irsdk) bool {
 	return slices.Contains([]string{"GREEN", "YELLOW", "CHECKERED"}, getRaceState(api))
-
 }
 
 func isRealDriver(d yaml.Drivers) bool {
@@ -109,9 +107,9 @@ func deltaToPrev(a, b float64) float64 {
 }
 
 func GetMetricUnit(s string) (float64, error) {
-	re := regexp.MustCompile("(?P<value>[0-9.-]+)\\s*(?P<unit>.*)")
+	re := regexp.MustCompile(`(?P<value>[0-9.-]+)\s*(?P<unit>.*)`)
 
-	if !re.Match([]byte(s)) {
+	if !re.MatchString(s) {
 		log.Error("invalid data with unit", log.String("data", s))
 		return 0, ErrUnknownValueWithUnit
 	}
@@ -144,7 +142,6 @@ func GetTrackLengthInMeters(s string) (float64, error) {
 }
 
 func carClassesLookup(drivers []yaml.Drivers) map[int]model.CarClass {
-
 	lookup := make(map[int]model.CarClass)
 	for _, d := range drivers {
 		if isRealDriver(d) {
@@ -181,7 +178,6 @@ func collectCars(drivers []yaml.Drivers) []model.CarInfo {
 	for _, d := range drivers {
 		if isRealDriver(d) {
 			if _, ok := carLookup[d.CarID]; !ok {
-
 				carLookup[d.CarID] = model.CarInfo{
 					CarID:         d.CarID,
 					CarClassID:    d.CarClassID,

@@ -1,3 +1,4 @@
+//nolint:funlen,nestif,cyclop //checked various places, no need to refactor
 package processor
 
 import (
@@ -28,11 +29,13 @@ type CarProc struct {
 	prevLapDistPct       []float32      // data from previous iteration (CarIdxLapDistPct)
 	prevLapPos           []int32        // data from previous iteration (CarIdxLap)
 	carLookup            map[int]*CarData
-	lastStandingsIR      []yaml.ResultsPositions
+
+	lastStandingsIR []yaml.ResultsPositions
 
 	carDriverProc   *CarDriverProc
 	pitBoundaryProc *PitBoundaryProc
 	speedmapProc    *SpeedmapProc
+	messageProc     *MessageProc
 	bestSectionProc *BestSectionProc
 }
 
@@ -74,6 +77,7 @@ func NewCarProc(
 	carDriverProc *CarDriverProc,
 	pitBoundaryProc *PitBoundaryProc,
 	speedmapProc *SpeedmapProc,
+	messageProc *MessageProc,
 ) *CarProc {
 	ret := &CarProc{
 		api:             api,
@@ -81,6 +85,7 @@ func NewCarProc(
 		carDriverProc:   carDriverProc,
 		pitBoundaryProc: pitBoundaryProc,
 		speedmapProc:    speedmapProc,
+		messageProc:     messageProc,
 	}
 
 	ret.init()
@@ -123,6 +128,20 @@ func (p *CarProc) init() {
 		})
 }
 
+func (p *CarProc) newCarData(carIdx int) *CarData {
+	reportLapStatus := func(twm TimeWithMarker) {
+		if twm.marker != MarkerOldLap {
+			p.messageProc.ReportDriverLap(carIdx, twm)
+		}
+	}
+	return NewCarData(
+		int32(carIdx),
+		p.carDriverProc,
+		p.pitBoundaryProc,
+		p.gpd,
+		reportLapStatus)
+}
+
 // will be called every tick, we can assume to have valid data (no unexpected -1 values)
 func (p *CarProc) Process() {
 	// do nothing
@@ -144,7 +163,7 @@ func (p *CarProc) Process() {
 		var ok bool
 		if carData, ok = p.carLookup[idx]; !ok {
 			// we have a new car, create it
-			carData = NewCarData(int32(idx), p.carDriverProc, p.pitBoundaryProc, p.gpd)
+			carData = p.newCarData(idx)
 			p.carLookup[idx] = carData
 
 		}
@@ -283,18 +302,17 @@ func (p *CarProc) computeTimes(carData *CarData) {
 			log.Info("Car finished the race", log.String("carNum", carNum))
 			return
 
-		} else {
-			if len(p.aboutToFinishMarker) > 0 {
-				if float64(carData.lap) > p.aboutToFinishMarker[0].ref {
-					p.winnerCrossedTheLine = true
-					carData.setState(&carFinished{})
-					carData.stintLap -= 1
-					carData.lap = carData.lc
-					log.Info("Car WON the race", log.String("carNum", carNum))
-					return
-				}
+		} else if len(p.aboutToFinishMarker) > 0 {
+			if float64(carData.lap) > p.aboutToFinishMarker[0].ref {
+				p.winnerCrossedTheLine = true
+				carData.setState(&carFinished{})
+				carData.stintLap -= 1
+				carData.lap = carData.lc
+				log.Info("Car WON the race", log.String("carNum", carNum))
+				return
 			}
 		}
+
 		carData.startLap(p.currentTime)
 
 	}
@@ -388,11 +406,16 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 		work := p.carLookup[st.CarIdx]
 		if work == nil {
 			// rare case when reconnecting to a session
-			work = NewCarData(int32(st.CarIdx), p.carDriverProc, p.pitBoundaryProc, p.gpd)
+			work = p.newCarData(st.CarIdx)
 			p.carLookup[st.CarIdx] = work
 		}
-		work.pos = int(st.Position)
-		work.pic = int(st.ClassPosition)
+		work.pos = st.Position
+		// iRacing sets pic to 0-based at race finish, we correct it here
+		if p.winnerCrossedTheLine {
+			work.pic = st.ClassPosition + 1
+		} else {
+			work.pic = st.ClassPosition
+		}
 		work.gap = st.Time
 		work.bestLap.time = st.FastestTime
 		standingsLaptime := st.LastTime
@@ -473,6 +496,8 @@ func (p *CarProc) getProcessableCarIdxs() []int {
 }
 
 // returns []*CarData in current race order
+//
+//nolint:gocognit,gocritic // no need to refactor
 func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 	if len(p.carLookup) == 0 {
 		return []*CarData{}
@@ -528,7 +553,7 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 }
 
 func (p *CarProc) RaceStarts() {
-	log.Info("Recieved race start event. ")
+	log.Info("Received race start event. ")
 	// have to check if we need this.....
 	// for _, idx := range p.getProcessableCarIdxs() {
 	// 	p.carLookup[idx].startLap(p.currentTime)

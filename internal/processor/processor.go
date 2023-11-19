@@ -113,8 +113,15 @@ func NewProcessor(
 	pitBoundaryProc := NewPitBoundaryProc()
 	carDriverProc := NewCarDriverProc(api, cardataOutput)
 	messageProc := NewMessageProc(carDriverProc)
+	carDriverProc.SetReportChangeFunc(messageProc.DriverEnteredCar)
 	speedmapProc := NewSpeedmapProc(api, opts.ChunkSize, &opts.GlobalProcessingData)
-	carProc := NewCarProc(api, &opts.GlobalProcessingData, carDriverProc, pitBoundaryProc, speedmapProc)
+	carProc := NewCarProc(
+		api,
+		&opts.GlobalProcessingData,
+		carDriverProc,
+		pitBoundaryProc,
+		speedmapProc,
+		messageProc)
 	raceProc := NewRaceProc(api,
 		carProc,
 		messageProc,
@@ -160,8 +167,8 @@ func (p *Processor) init() {
 			}
 			p.raceProc.carProc.gpd.TrackInfo.Pit = &pitInfo
 			p.extraInfoOutput <- model.ExtraInfo{Track: p.raceProc.carProc.gpd.TrackInfo}
-			time.Sleep(1 * time.Second) // wait a little to get message transmitted
 		}
+		time.Sleep(1 * time.Second) // wait a little to get outstandig messages transmitted
 		if p.options.RecordingDoneChannel != nil {
 			log.Debug("Signaling recording done")
 			close(p.options.RecordingDoneChannel)
@@ -179,8 +186,12 @@ func (p *Processor) Process() {
 		log.Info("DriverInfo changed, updating state")
 		var freshYaml yaml.IrsdkYaml
 		if err := goyaml.Unmarshal([]byte(p.api.GetYamlString()), &freshYaml); err != nil {
-			log.Error("Error unmarshalling irsdk yaml", log.ErrorField(err))
-			return
+			// let's try to repair the yaml and unmarshal again
+			err := goyaml.Unmarshal([]byte(p.api.RepairedYaml(p.api.GetYamlString())), &freshYaml)
+			if err != nil {
+				log.Error("Error unmarshalling irsdk yaml", log.ErrorField(err))
+				return
+			}
 		}
 		// fmt.Printf("Delta: %v\n", cmp.Diff(y.DriverInfo, p.lastDriverInfo))
 		// p.lastDriverInfo = reflect.ValueOf(y.DriverInfo).Interface().(yaml.DriverInfo)

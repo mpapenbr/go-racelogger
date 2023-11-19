@@ -20,6 +20,25 @@ type TimeWithMarker struct {
 	marker string
 }
 
+type ReportTimingStatus func(twm TimeWithMarker)
+
+func (t *TimeWithMarker) String() string {
+	formatMsg := func(marker string, time float64) string {
+		return fmt.Sprintf("%s best lap %s", marker, formatLaptime(time))
+	}
+	switch t.marker {
+	case MarkerOverallBest:
+		return formatMsg("overall", t.time)
+	case MarkerClassBest:
+		return formatMsg("class", t.time)
+	case MarkerCarBest:
+		return formatMsg("car", t.time)
+	case MarkerPersonalBest:
+		return formatMsg("personal", t.time)
+	}
+	return ""
+}
+
 type CarLaptiming struct {
 	lap     *SectionTiming
 	sectors []*SectionTiming
@@ -31,6 +50,7 @@ type SectionTiming struct {
 	duration     TimeWithMarker
 	personalBest float64
 	inProgress   bool
+	reportStatus ReportTimingStatus
 }
 
 func defaultSectionTiming() SectionTiming {
@@ -49,19 +69,24 @@ func (s *SectionTiming) markStop(t float64) float64 {
 
 func (s *SectionTiming) markDuration(marker string) {
 	s.duration.marker = marker
+	if s.reportStatus != nil && marker != "" && marker != MarkerOldLap {
+		s.reportStatus(s.duration)
+	}
 }
 
 func (s *SectionTiming) isStarted() bool {
 	return s.startTime != -1
 }
 
-func NewCarLaptiming(numSectors int) *CarLaptiming {
+func NewCarLaptiming(numSectors int, reportLapStatus ReportTimingStatus) *CarLaptiming {
 	sectors := make([]*SectionTiming, numSectors)
 	for i := range sectors {
 		work := defaultSectionTiming()
 		sectors[i] = &work
 	}
 	lap := defaultSectionTiming()
+	lap.reportStatus = reportLapStatus
+
 	return &CarLaptiming{
 		lap:     &lap,
 		sectors: sectors,
@@ -249,5 +274,19 @@ func (b *BestSectionProc) markInternal(
 		return ""
 	} else {
 		return st.duration.marker
+	}
+}
+
+func formatLaptime(t float64) string {
+	work := t
+	minutes := math.Floor(t / 60)
+	work -= minutes * 60
+	seconds := math.Trunc(work)
+	work -= seconds
+	hundreds := math.Trunc(work * 100)
+	if minutes > 0 {
+		return fmt.Sprintf("%.0f:%02d.%02d", minutes, int(seconds), int(hundreds))
+	} else {
+		return fmt.Sprintf("%02d.%02d", int(seconds), int(hundreds))
 	}
 }
