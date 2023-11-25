@@ -6,7 +6,7 @@ on:
       - v*.*.*
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-go@v4
         with:
-          go-version: "1.20"
+          go-version: "1.21"
 
       - name: Login to Github Container Registry
         uses: docker/login-action@v3
