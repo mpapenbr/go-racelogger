@@ -26,6 +26,7 @@ type CarDriverProc struct {
 	reportChangeFunc  func(carIdx int)
 }
 
+//nolint:whitespace // can't get different linters happy
 func NewCarDriverProc(
 	api *irsdk.Irsdk,
 	output chan model.CarData,
@@ -34,6 +35,8 @@ func NewCarDriverProc(
 }
 
 // use this for testing with custom yaml content
+//
+//nolint:whitespace // can't get different linters happy
 func newCarDriverProcInternal(
 	api *irsdk.Irsdk,
 	output chan model.CarData,
@@ -43,6 +46,7 @@ func newCarDriverProcInternal(
 	return &ret
 }
 
+//nolint:gocritic // by design
 func (d *CarDriverProc) init(y *yaml.IrsdkYaml) {
 	d.lookup = make(map[int32]yaml.Drivers)
 	d.byCarIdLookup = make(map[int32][]yaml.Drivers)
@@ -60,16 +64,17 @@ func (d *CarDriverProc) init(y *yaml.IrsdkYaml) {
 		d.lookup[int32(v.CarIdx)] = newEntry
 		teamMembers := []yaml.Drivers{newEntry}
 		d.teams[int32(v.CarIdx)] = teamMembers
-		if vCar, ok := d.byCarIdLookup[int32(v.CarID)]; !ok {
+		if _, ok := d.byCarIdLookup[int32(v.CarID)]; !ok {
 			d.byCarIdLookup[int32(v.CarID)] = []yaml.Drivers{newEntry}
 		} else {
-			vCar = append(vCar, newEntry)
+			d.byCarIdLookup[int32(v.CarID)] = append(d.byCarIdLookup[int32(v.CarID)], newEntry)
 		}
 
-		if vCar, ok := d.byCarClassIdLookup[int32(v.CarClassID)]; !ok {
+		if _, ok := d.byCarClassIdLookup[int32(v.CarClassID)]; !ok {
 			d.byCarClassIdLookup[int32(v.CarClassID)] = []yaml.Drivers{newEntry}
 		} else {
-			vCar = append(vCar, newEntry)
+			d.byCarClassIdLookup[int32(v.CarClassID)] = append(
+				d.byCarClassIdLookup[int32(v.CarClassID)], newEntry)
 		}
 		d.latestDriverNames[int32(v.CarIdx)] = v.UserName
 		d.reportChange(int32(v.CarIdx))
@@ -91,6 +96,8 @@ func (d *CarDriverProc) GetCurrentDriver(carIdx int32) yaml.Drivers {
 }
 
 // gets called when main processor detects new driver data
+//
+//nolint:funlen,gocritic,errcheck// keep things together and simple
 func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 	currentDriverNames := make(map[int]string)
 	for _, v := range y.DriverInfo.Drivers {
@@ -108,7 +115,8 @@ func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 			if !slices.ContainsFunc(teamMembers, func(ld yaml.Drivers) bool {
 				return ld.UserID == v.UserID
 			}) {
-				teamMembers = append(teamMembers, newEntry)
+
+				d.teams[int32(v.CarIdx)] = append(d.teams[int32(v.CarIdx)], newEntry)
 			}
 		}
 		if d.latestDriverNames[int32(v.CarIdx)] != v.UserName {
@@ -135,7 +143,7 @@ func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 		}
 
 		drivers := []model.Driver{}
-		for _, member := range d.teams[int32(k)] {
+		for _, member := range d.teams[k] {
 			drivers = append(drivers, model.Driver{
 				CarIdx:      int(k),
 				ID:          member.UserID,

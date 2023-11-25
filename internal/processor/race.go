@@ -1,3 +1,4 @@
+//nolint:errcheck // won't check everytime on type conversion
 package processor
 
 import (
@@ -92,6 +93,7 @@ func (rd *RaceDone) Update(rp *RaceProc) {
 	rp.onRaceDone()
 }
 
+//nolint:whitespace // can't get different linters happy
 func NewRaceProc(
 	api *irsdk.Irsdk,
 	carProc *CarProc,

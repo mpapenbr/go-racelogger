@@ -23,7 +23,7 @@ type ChunkData struct {
 	minHist     int
 }
 
-func newChunkData(id int, keepHistory int, minHist int) *ChunkData {
+func newChunkData(id, keepHistory, minHist int) *ChunkData {
 	return &ChunkData{
 		id:          id,
 		keepHistory: keepHistory,
@@ -60,17 +60,17 @@ func (p *ChunkData) compute() {
 // It is used by the Processor struct.
 
 type SpeedmapProc struct {
-	api             *irsdk.Irsdk
-	chunkSize       int
-	gpd             *GlobalProcessingData
-	lastSessionTime float64
-	numChunks       int
-	leaderTrackPos  float64
-	carClassLookup  map[int][]*ChunkData // car class id -> chunk data
-	carIdLookup     map[int][]*ChunkData // car id -> chunk data
-	carLookup       map[int][]*ChunkData // car idx -> chunk data
+	api            *irsdk.Irsdk
+	chunkSize      int
+	gpd            *GlobalProcessingData
+	numChunks      int
+	leaderTrackPos float64
+	carClassLookup map[int][]*ChunkData // car class id -> chunk data
+	carIdLookup    map[int][]*ChunkData // car id -> chunk data
+	carLookup      map[int][]*ChunkData // car idx -> chunk data
 }
 
+//nolint:whitespace // can't get different linters happy
 func NewSpeedmapProc(
 	api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData,
 ) *SpeedmapProc {
@@ -99,6 +99,7 @@ func (s *SpeedmapProc) SetLeaderTrackPos(trackPos float64) {
 	s.leaderTrackPos = trackPos
 }
 
+//nolint:lll,funlen,whitespace // better readability
 func (s *SpeedmapProc) ComputeDeltaTime(
 	carClassId int, trackPosCarInFront, trackPosCurrentCar float64,
 ) float64 {
@@ -117,16 +118,10 @@ func (s *SpeedmapProc) ComputeDeltaTime(
 	// chunk[last] is traveled from StartOfChunk to trackPos
 	chunkData := make([]*ChunkData, 0)
 	if trackPosCarInFront < trackPosCurrentCar {
-		for _, v := range s.carClassLookup[carClassId][idxCurrentCar:] {
-			chunkData = append(chunkData, v)
-		}
-		for _, v := range s.carClassLookup[carClassId][0 : idxCarInFront+1] {
-			chunkData = append(chunkData, v)
-		}
+		chunkData = append(chunkData, s.carClassLookup[carClassId][idxCurrentCar:]...)
+		chunkData = append(chunkData, s.carClassLookup[carClassId][0:idxCarInFront+1]...)
 	} else {
-		for _, v := range s.carClassLookup[carClassId][idxCurrentCar : idxCarInFront+1] {
-			chunkData = append(chunkData, v)
-		}
+		chunkData = append(chunkData, s.carClassLookup[carClassId][idxCurrentCar:idxCarInFront+1]...)
 	}
 	if len(chunkData) == 0 {
 		return 0
@@ -203,9 +198,9 @@ func (s *SpeedmapProc) computeLaptime(chunks []*ChunkData) float64 {
 }
 
 func (s *SpeedmapProc) hasValidAvgs(chunks []*ChunkData) bool {
-	return slices.ContainsFunc(chunks, func(cd *ChunkData) bool {
+	return !slices.ContainsFunc(chunks, func(cd *ChunkData) bool {
 		return cd.avg == 0
-	}) == false
+	})
 }
 
 func (s *SpeedmapProc) ensureLookup(lookup map[int][]*ChunkData, id int) {

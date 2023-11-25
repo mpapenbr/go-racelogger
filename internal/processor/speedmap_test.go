@@ -1,3 +1,4 @@
+//nolint:lll // better readability
 package processor
 
 import (
@@ -26,8 +27,8 @@ func defaultTestSpeedmapProc() *SpeedmapProc {
 func almostEqual(a, b float64) bool {
 	return math.Abs(a-b) < 0.0001
 }
-func TestSpeedmapProc_ComputeDeltaTime(t *testing.T) {
 
+func TestSpeedmapProc_ComputeDeltaTime(t *testing.T) {
 	type args struct {
 		trackPosCarInFront float64
 		trackPosCurrentCar float64
@@ -57,14 +58,8 @@ func TestSpeedmapProc_ComputeDeltaTime(t *testing.T) {
 }
 
 func TestSpeedmapProc_computeLapTime(t *testing.T) {
-
-	type args struct {
-		trackPosCarInFront float64
-		trackPosCurrentCar float64
-	}
 	tests := []struct {
 		name string
-		// args args
 		want float64
 	}{
 		{"standard", 3.6},

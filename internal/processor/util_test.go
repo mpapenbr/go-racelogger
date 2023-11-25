@@ -12,7 +12,6 @@ func TestGetMetricUnit(t *testing.T) {
 		want    float64
 		wantErr bool
 	}{
-
 		{"kph", args{"1 kph"}, 1.0, false},
 		{"percent", args{"2 %"}, 2.0, false},
 		{"celsius", args{"3 °C"}, 3.0, false},

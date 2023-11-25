@@ -44,11 +44,50 @@ type finishMarker struct {
 	ref    float64 // lap + trackPos at the time the checkered flag was waved
 }
 
-var oldBaseAttributes = []string{"state", "carIdx", "carNum", "userName", "teamName", "car", "carClass", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
+//nolint:unused // used for reference
+var oldBaseAttributes = []string{
+	"state",
+	"carIdx",
+	"carNum",
+	"userName",
+	"teamName",
+	"car",
+	"carClass",
+	"pos",
+	"pic",
+	"lap",
+	"lc",
+	"gap",
+	"interval",
+	"trackPos",
+	"speed",
+	"dist",
+	"pitstops",
+	"stintLap",
+	"last",
+	"best",
+}
 
 // this will become the new baseAttributes later. "static" data will be removed
-var baseAttributes = []string{"state", "carIdx", "pos", "pic", "lap", "lc", "gap", "interval", "trackPos", "speed", "dist", "pitstops", "stintLap", "last", "best"}
+var baseAttributes = []string{
+	"state",
+	"carIdx",
+	"pos",
+	"pic",
+	"lap",
+	"lc",
+	"gap",
+	"interval",
+	"trackPos",
+	"speed",
+	"dist",
+	"pitstops",
+	"stintLap",
+	"last",
+	"best",
+}
 
+//nolint:makezero // false positive?
 func CarManifest(gpd *GlobalProcessingData) []string {
 	// create copy of baseAttributes
 	ret := make([]string, len(baseAttributes))
@@ -71,6 +110,7 @@ func CarManifest(gpd *GlobalProcessingData) []string {
 	return ret
 }
 
+//nolint:whitespace // can't get different linters happy
 func NewCarProc(
 	api *irsdk.Irsdk,
 	gpd *GlobalProcessingData,
@@ -92,6 +132,7 @@ func NewCarProc(
 	return ret
 }
 
+//nolint:gocritic,gocognit // by design
 func (p *CarProc) init() {
 	collectInts := func(m map[int32][]yaml.Drivers) []int {
 		ret := make([]int, 0)
@@ -143,6 +184,8 @@ func (p *CarProc) newCarData(carIdx int) *CarData {
 }
 
 // will be called every tick, we can assume to have valid data (no unexpected -1 values)
+//
+//nolint:gocognit,gocritic,errcheck // by design
 func (p *CarProc) Process() {
 	// do nothing
 	// currentTick := justValue(s.api.GetIntValue("SessionTick"))
@@ -165,7 +208,6 @@ func (p *CarProc) Process() {
 			// we have a new car, create it
 			carData = p.newCarData(idx)
 			p.carLookup[idx] = carData
-
 		}
 		carData.PreProcess(p.api)
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
@@ -178,7 +220,6 @@ func (p *CarProc) Process() {
 				if carData.state != CarStatePit {
 					p.speedmapProc.Process(carData, driver.CarClassID, driver.CarID)
 				}
-
 			}
 			p.computeTimes(carData)
 
@@ -186,9 +227,7 @@ func (p *CarProc) Process() {
 			// compute speed for car
 			// call postProcess for carData
 		}
-
 	}
-
 	// at this point all cars have been processed
 
 	y := p.api.GetLatestYaml()
@@ -204,7 +243,6 @@ func (p *CarProc) Process() {
 		p.processStandings(curStandingsIR)
 		// standings changed, update
 		p.lastStandingsIR = curStandingsIR
-
 	}
 	// do post processing for all cars
 	for _, c := range processableCars {
@@ -213,12 +251,14 @@ func (p *CarProc) Process() {
 	p.speedmapProc.SetLeaderTrackPos(p.getInCurrentRaceOrder()[0].trackPos)
 	// copy data for next iteration
 	p.prevSessionTime = currentTime
-	p.prevLapDistPct = make([]float32, len(justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32)))
+	p.prevLapDistPct = make([]float32,
+		len(justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32)))
 	copy(p.prevLapDistPct, justValue(p.api.GetFloatValues("CarIdxLapDistPct")).([]float32))
 	p.prevLapPos = make([]int32, len(justValue(p.api.GetIntValues("CarIdxLap")).([]int32)))
 	copy(p.prevLapPos, justValue(p.api.GetIntValues("CarIdxLap")).([]int32))
 }
 
+//nolint:unused,gocritic // used for debugging
 func (p *CarProc) carInfo(carIdx int) {
 	carData := p.carLookup[carIdx]
 	carNum := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber
@@ -238,16 +278,19 @@ func (p *CarProc) computeTimes(carData *CarData) {
 	}
 	if carData.currentSector == -1 {
 		carData.currentSector = i
-		// don't compute this sector. on -1 we are pretty much rushing into a running race or just put into the car
+		// don't compute this sector.
+		// on -1 we are pretty much rushing into a running race or just put into the car
 		return
 	}
 	if carData.currentSector == i {
 		return // nothing to do, actions are done on sector change
 	}
-	//  the prev sector is done (we assume the car is running in the correct direction)
-	//  but some strange things may happen: car spins, comes to a halt, drives in reverse direction and crosses the sector mark multiple times ;)
-	//  very rare, I hope
-	//  so we check if the current sector is the next "expected" sector
+	// the prev sector is done (we assume the car is running in the correct direction)
+	// but some strange things may happen:
+	// car spins, comes to a halt, drives in reverse direction and crosses the sector
+	// mark multiple times ;)
+	// very rare, I hope
+	// so we check if the current sector is the next "expected" sector
 	expectedSector := (carData.currentSector + 1) % len(p.gpd.TrackInfo.Sectors)
 	if i != expectedSector {
 		return
@@ -261,7 +304,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 	// need a pointer here, otherwise changes done here will get lost
 	sector := carData.laptiming.sectors[carData.currentSector]
 
-	if sector.isStarted() == false {
+	if !sector.isStarted() {
 		carData.startSector(i, p.currentTime)
 		log.Debug("Sector had no start time. Now initialized",
 			log.String("carNum", carNum),
@@ -270,12 +313,6 @@ func (p *CarProc) computeTimes(carData *CarData) {
 	}
 
 	sector.markStop(p.currentTime)
-
-	// duration := sector.markStop(p.currentTime)
-	// log.Debug("Sector completed",
-	// 	log.String("carNum", carNum),
-	// 	log.Int("sector", carData.currentSector),
-	// 	log.Float64("duration", duration))
 
 	p.bestSectionProc.markSector(sector, carData.currentSector, carClassId, carId)
 
@@ -301,7 +338,6 @@ func (p *CarProc) computeTimes(carData *CarData) {
 			carData.lap = carData.lc
 			log.Info("Car finished the race", log.String("carNum", carNum))
 			return
-
 		} else if len(p.aboutToFinishMarker) > 0 {
 			if float64(carData.lap) > p.aboutToFinishMarker[0].ref {
 				p.winnerCrossedTheLine = true
@@ -312,9 +348,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 				return
 			}
 		}
-
 		carData.startLap(p.currentTime)
-
 	}
 }
 
@@ -322,19 +356,21 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	output := func(f float64) string {
 		return fmt.Sprintf("%.4f", f)
 	}
-	// carData has already recieved current trackPos
+	// carData has already received current trackPos
 	if len(p.prevLapDistPct) == 0 {
 		return -1
 	}
 	currentTrackPos := float64(carData.lap) + carData.trackPos
 	prevLap := p.prevLapPos[carData.carIdx]
-	prevTrackPos := float64(p.prevLapPos[carData.carIdx]) + gate(float64(p.prevLapDistPct[carData.carIdx]))
+	prevTrackPos := float64(p.prevLapPos[carData.carIdx]) +
+		gate(float64(p.prevLapDistPct[carData.carIdx]))
 	if prevLap < 0 || carData.lap < 0 {
 		return -1
 	}
 	moveDist := currentTrackPos - prevTrackPos
 	// issue warning if car moved backward more than minMoveDistPct
 	if moveDist < 0 && math.Abs(moveDist) > p.minMoveDistPct {
+		//nolint:lll // better readability
 		log.Warn("Car moved backward???",
 			log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
 			log.Float64("prevTrackPos", prevTrackPos),
@@ -349,7 +385,6 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	deltaTime := p.currentTime - p.prevSessionTime
 	if deltaTime != 0 {
 		if moveDist < p.minMoveDistPct {
-			// log.Debug("Car moved less than 10cm", log.Float64("moveDist", moveDist), log.Float64("minMoveDistPct", p.minMoveDistPct))
 			return 0
 		}
 		speed := p.gpd.TrackInfo.Length * moveDist / deltaTime * 3.6
@@ -362,6 +397,7 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	// compute speed
 }
 
+//nolint:lll // better readability
 func (p *CarProc) calcDelta() {
 	currentRaceOrder := p.getInCurrentRaceOrder()
 	for i, car := range currentRaceOrder[1:] {
@@ -386,7 +422,10 @@ func (p *CarProc) calcDelta() {
 			car.interval = 999
 		} else {
 			carClassId := car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID
-			deltaByCarClassSpeemap := p.speedmapProc.ComputeDeltaTime(carClassId, currentRaceOrder[i].trackPos, car.trackPos)
+			deltaByCarClassSpeemap := p.speedmapProc.ComputeDeltaTime(
+				carClassId,
+				currentRaceOrder[i].trackPos,
+				car.trackPos)
 			if deltaByCarClassSpeemap < 0 {
 				log.Warn("Negative delta by speedmap",
 					log.String("carNum", car.carDriverProc.GetCurrentDriver(car.carIdx).CarNumber),
@@ -399,9 +438,9 @@ func (p *CarProc) calcDelta() {
 	}
 }
 
+//nolint:gocritic // by design
 func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 	// Note: IR-standings are provided with a little delay after cars crossed the line
-
 	for _, st := range curStandingsIR {
 		work := p.carLookup[st.CarIdx]
 		if work == nil {
@@ -429,7 +468,6 @@ func (p *CarProc) processStandings(curStandingsIR []yaml.ResultsPositions) {
 		p.bestSectionProc.markLap(work.laptiming.lap,
 			work.carDriverProc.GetCurrentDriver(work.carIdx).CarClassID,
 			work.carDriverProc.GetCurrentDriver(work.carIdx).CarID)
-
 	}
 
 	p.markBestLaps()
@@ -472,8 +510,10 @@ func (p *CarProc) markBestLaps() {
 	}
 
 	for _, car := range all {
-		byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID] = append(byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID], car)
-		byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID] = append(byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID], car)
+		byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID] = append(
+			byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID], car)
+		byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID] = append(
+			byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID], car)
 	}
 
 	// reset all marker
@@ -497,7 +537,7 @@ func (p *CarProc) getProcessableCarIdxs() []int {
 
 // returns []*CarData in current race order
 //
-//nolint:gocognit,gocritic // no need to refactor
+//nolint:gocritic,makezero // no need to refactor
 func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 	if len(p.carLookup) == 0 {
 		return []*CarData{}
@@ -509,7 +549,8 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 	}
 
 	standardRaceOrder := func(i, j int) bool {
-		return (float64(work[i].lap) + work[i].trackPos) > (float64(work[j].lap) + work[j].trackPos)
+		return (float64(work[i].lap) + work[i].trackPos) >
+			(float64(work[j].lap) + work[j].trackPos)
 	}
 
 	raceEndingOrder := func(a, b *CarData) int {
@@ -534,18 +575,8 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 		slices.SortStableFunc(validPos, raceEndingOrder)
 
 		work = make([]*CarData, 0)
-		for _, item := range validPos {
-			work = append(work, item)
-		}
-		for _, item := range invalidPos {
-			work = append(work, item)
-		}
-
-		dOutput := []string{}
-		for _, item := range work {
-			dOutput = append(dOutput, fmt.Sprintf("%d: %d", item.pos, item.carIdx))
-		}
-		// log.Debug("raceEndingOrder", log.String("order", strings.Join(dOutput, ",")))
+		work = append(work, validPos...)
+		work = append(work, invalidPos...)
 	} else {
 		sort.Slice(work, standardRaceOrder)
 	}

@@ -14,8 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var eventName string
-var eventDescription string
+var (
+	eventName        string
+	eventDescription string
+)
 
 func NewRecordCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -58,6 +60,7 @@ func NewRecordCmd() *cobra.Command {
 	return cmd
 }
 
+//nolint:funlen,gocritic // by design
 func recordEvent() error {
 	if logger := util.SetupLogger(); logger == nil {
 		fmt.Printf("Could not setup logger. Strange")
@@ -65,7 +68,7 @@ func recordEvent() error {
 
 	log.Debug("Starting...")
 	if ok, err := validateBackendVersion(); err != nil || !ok {
-		return nil
+		return err
 	}
 	if ok := util.WaitForSimulation(); !ok {
 		log.Error("Simulation not running")
@@ -90,7 +93,9 @@ func recordEvent() error {
 
 	log.Debug("Register event")
 
-	r.RegisterProvider(eventName, eventDescription)
+	if err := r.RegisterProvider(eventName, eventDescription); err != nil {
+		return err
+	}
 
 	log.Debug("Waiting for termination")
 	select {
@@ -103,7 +108,7 @@ func recordEvent() error {
 		}
 	case <-ctx.Done():
 		{
-			log.Debug("Recieved ctx.Done")
+			log.Debug("Received ctx.Done")
 		}
 	}
 
@@ -125,7 +130,9 @@ func validateBackendVersion() (bool, error) {
 	}
 	versionOk := util.CheckServerVersion(version)
 	if !versionOk {
-		log.Error("Backend version not compatible.", log.String("required", util.RequiredServerVersion), log.String("backend", version))
+		log.Error("Backend version not compatible.",
+			log.String("required", util.RequiredServerVersion),
+			log.String("backend", version))
 	}
 	return versionOk, nil
 }

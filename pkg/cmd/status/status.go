@@ -13,8 +13,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ErrSimulationNotRunning = errors.New("iRacing Simulation not running")
-var ErrVarDataRetrieval = errors.New("could not get variable data from iRacing")
+var (
+	ErrSimulationNotRunning = errors.New("iRacing Simulation not running")
+	ErrVarDataRetrieval     = errors.New("could not get variable data from iRacing")
+)
 
 func NewStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -56,7 +58,6 @@ func checkIracingStatus() error {
 			log.String("Session", y.SessionInfo.Sessions[sessionNum].SessionName),
 			log.String("SessionTime", fmt.Sprintf("%.2f", sessionTime)),
 		)
-
 	} else {
 		return err
 	}

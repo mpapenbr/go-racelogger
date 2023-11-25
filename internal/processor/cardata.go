@@ -10,7 +10,13 @@ import (
 type carState interface {
 	Enter(cd *CarData)
 	Exit(cd *CarData)
-	Update(cd *CarData, cw *carWorkData)
+	// gets called by the main processor with raw data from irsdk
+	// at this point there are no main processor calculations done yet
+	// this method is used to process the data from iRacing telemetry
+	UpdatePre(cd *CarData, cw *carWorkData)
+	// gets called by the main processor after all calculations are done
+	// this method is used to process the data from the main processor
+	UpdatePost(cd *CarData)
 }
 
 const (
@@ -19,13 +25,14 @@ const (
 	CarStatePit    = "PIT"
 	CarStateSlow   = "SLOW"
 	CarStateFinish = "FIN"
+	CarSlowSpeed   = 25 // a car is considered slow if it is slower than this (km/h)
 )
 
 type carInit struct{}
 
 func (ci *carInit) Enter(cd *CarData) { log.Info("Entering state: carInit") }
 func (ci *carInit) Exit(cd *CarData)  { log.Info("Leaving state: carInit") }
-func (ci *carInit) Update(cd *CarData, cw *carWorkData) {
+func (ci *carInit) UpdatePre(cd *CarData, cw *carWorkData) {
 	cd.copyWorkData(cw)
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
@@ -43,18 +50,19 @@ func (ci *carInit) Update(cd *CarData, cw *carWorkData) {
 	}
 	cd.prepareMsgData()
 }
+func (ci *carInit) UpdatePost(cd *CarData) {}
 
 type carRun struct{}
 
 func (cr *carRun) Enter(cd *CarData) { log.Info("Entering state: carRun") }
 func (cr *carRun) Exit(cd *CarData)  { log.Info("Leaving state: carRun") }
-func (cr *carRun) Update(cd *CarData, cw *carWorkData) {
+func (cr *carRun) UpdatePre(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
 		cd.setState(&carOut{})
 		return
 	}
-	if cw.pit == false && int(cw.lc) > cd.lc {
+	if !cw.pit && int(cw.lc) > cd.lc {
 		cd.stintLap += 1
 	}
 	cd.copyWorkData(cw)
@@ -66,10 +74,43 @@ func (cr *carRun) Update(cd *CarData, cw *carWorkData) {
 	}
 }
 
-type (
-	carSlow struct{}
-	carPit  struct{}
-)
+func (cr *carRun) UpdatePost(cd *CarData) {
+	if cd.speed > 0 && cd.speed < CarSlowSpeed {
+		cd.state = CarStateSlow
+		cd.setState(&carSlow{})
+	}
+}
+
+type carSlow struct{}
+
+func (cs *carSlow) Enter(cd *CarData) { log.Info("Entering state: carSlow") }
+func (cs *carSlow) Exit(cd *CarData)  { log.Info("Leaving state: carSlow") }
+func (cs *carSlow) UpdatePre(cd *CarData, cw *carWorkData) {
+	if cw.trackPos == -1 {
+		cd.state = CarStateOut
+		cd.setState(&carOut{})
+		return
+	}
+	if !cw.pit && int(cw.lc) > cd.lc {
+		cd.stintLap += 1
+	}
+	cd.copyWorkData(cw)
+	if cw.pit {
+		cd.state = CarStatePit
+		cd.pitstops += 1
+		cd.setState(&carPit{})
+		return
+	}
+}
+
+func (cs *carSlow) UpdatePost(cd *CarData) {
+	if cd.speed > 0 && cd.speed > CarSlowSpeed {
+		cd.state = CarStateRun
+		cd.setState(&carRun{})
+	}
+}
+
+type carPit struct{}
 
 func (cp *carPit) Enter(cd *CarData) {
 	log.Info("Entering state: carPit")
@@ -81,7 +122,7 @@ func (cp *carPit) Exit(cd *CarData) {
 	cd.pitBoundaryProc.processPitExit(cd.trackPos)
 }
 
-func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
+func (cp *carPit) UpdatePre(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
 		cd.setState(&carOut{})
@@ -89,27 +130,29 @@ func (cp *carPit) Update(cd *CarData, cw *carWorkData) {
 	}
 	cd.copyWorkData(cw)
 
-	if cw.pit == false {
+	if !cw.pit {
 		cd.state = CarStateRun
 		cd.setState(&carRun{})
 		return
 	}
 }
+func (cp *carPit) UpdatePost(cd *CarData) {}
 
 type carFinished struct{}
 
 func (cf *carFinished) Enter(cd *CarData) { log.Info("Entering state: carFinished") }
 func (cf *carFinished) Exit(cd *CarData)  { log.Info("Leaving state: carFinished") }
-func (cf *carFinished) Update(cd *CarData, cw *carWorkData) {
+func (cf *carFinished) UpdatePre(cd *CarData, cw *carWorkData) {
 	// do nothing - final state
 	cd.state = CarStateFinish
 }
+func (cf *carFinished) UpdatePost(cd *CarData) {}
 
 type carOut struct{}
 
 func (co *carOut) Enter(cd *CarData) { log.Info("Entering state: carOut") }
 func (co *carOut) Exit(cd *CarData)  { log.Info("Leaving state: carOut") }
-func (co *carOut) Update(cd *CarData, cw *carWorkData) {
+func (co *carOut) UpdatePre(cd *CarData, cw *carWorkData) {
 	// this may happen after resets or tow to pit road.
 	// if not on the pit road it may just be a short connection issue.
 	if cw.pit {
@@ -117,26 +160,23 @@ func (co *carOut) Update(cd *CarData, cw *carWorkData) {
 		cd.stintLap = 0
 		cd.setState(&carPit{})
 		return
-	} else {
-		if cw.trackPos > -1 {
-			cd.state = CarStateRun
-			cd.setState(&carRun{})
-			return
-		}
+	} else if cw.trackPos > -1 {
+		cd.state = CarStateRun
+		cd.setState(&carRun{})
+		return
 	}
 }
+func (co *carOut) UpdatePost(cd *CarData) {}
 
 // contains data extracted from irsdk that needs to be processed by the carState
 type carWorkData struct {
-	carIdx        int32
-	trackPos      float64
-	pos           int32
-	pic           int32
-	lap           int32
-	lc            int32
-	currentSector int32
-	pit           bool
-	speed         float64
+	carIdx   int32
+	trackPos float64
+	pos      int32
+	pic      int32
+	lap      int32
+	lc       int32
+	pit      bool
 }
 
 // CarData is a struct that contains the logic to process data for a single car data.
@@ -148,8 +188,6 @@ type CarData struct {
 	trackPos        float64
 	bestLap         TimeWithMarker
 	lastLap         TimeWithMarker
-	lastRaw         float64 // data from irsdk
-	slowMarker      bool
 	currentSector   int
 	stintLap        int
 	pitstops        int
@@ -161,7 +199,6 @@ type CarData struct {
 	speed           float64
 	interval        float64
 	gap             float64
-	prevTrackPos    float64
 	currentState    carState
 	laptiming       *CarLaptiming
 	carDriverProc   *CarDriverProc
@@ -169,6 +206,7 @@ type CarData struct {
 	gpd             *GlobalProcessingData
 }
 
+//nolint:whitespace // can't get different linters happy
 func NewCarData(
 	carIdx int32,
 	carDriverProc *CarDriverProc,
@@ -195,10 +233,11 @@ func NewCarData(
 
 func (cd *CarData) PreProcess(api *irsdk.Irsdk) {
 	cw := cd.extractIrsdkData(api)
-	cd.currentState.Update(cd, cw)
+	cd.currentState.UpdatePre(cd, cw)
 }
 
 func (cd *CarData) PostProcess() {
+	cd.currentState.UpdatePost(cd)
 	cd.prepareMsgData()
 }
 
@@ -251,23 +290,9 @@ func (cd *CarData) prepareMsgData() {
 	}
 }
 
-// return true if sector was unintialized and has been started
-func (cd *CarData) initSectorIfNeeded(sectorNum int, t float64) bool {
-	if cd.laptiming.sectors[sectorNum].isStarted() == false {
-		cd.currentSector = sectorNum
-		cd.laptiming.sectors[sectorNum].markStart(t)
-		return true
-	}
-	return false
-}
-
 func (cd *CarData) startSector(sectorNum int, t float64) {
 	cd.currentSector = sectorNum
 	cd.laptiming.sectors[sectorNum].markStart(t)
-}
-
-func (cd *CarData) stopSector(sectorNum int, t float64) float64 {
-	return cd.laptiming.sectors[sectorNum].markStop(t)
 }
 
 func (cd *CarData) markSectorsAsOld() {

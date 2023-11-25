@@ -1,5 +1,7 @@
+//nolint:funlen // keep things together
 package internal
 
+//nolint:gosec // md5 is used as hash for racing events
 import (
 	"context"
 	"crypto/md5"
@@ -22,12 +24,14 @@ import (
 	goyaml "gopkg.in/yaml.v3"
 )
 
-type EventKeyFunc func(*yaml.IrsdkYaml) string
-type Config struct {
-	ctx          context.Context
-	cancel       context.CancelFunc
-	eventKeyFunc EventKeyFunc
-}
+type (
+	EventKeyFunc func(*yaml.IrsdkYaml) string
+	Config       struct {
+		ctx          context.Context
+		cancel       context.CancelFunc
+		eventKeyFunc EventKeyFunc
+	}
+)
 type ConfigFunc func(cfg *Config)
 
 // Racelogger is the main component to control the connection to iRacing Telemetry API
@@ -52,11 +56,13 @@ func defaultEventKeyFunc(irYaml *yaml.IrsdkYaml) string {
 		log.Warn("Could not marshal WeekendInfo", log.ErrorField(err))
 		out = []byte(uuid.New().String())
 	}
+	//nolint:gosec //just used as hash
 	h := md5.New()
 	h.Write(out)
 	ret := hex.EncodeToString(h.Sum(nil))
-	return string(ret)
+	return ret
 }
+
 func WithContext(ctx context.Context, cancelFunc context.CancelFunc) ConfigFunc {
 	return func(cfg *Config) { cfg.ctx = ctx; cfg.cancel = cancelFunc }
 }
@@ -82,9 +88,9 @@ func (r *Racelogger) Close() {
 }
 
 func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error {
+	//nolint:gocritic // keeping it by design
 	// s := r.api.GetYamlString()
 	// os.WriteFile("test.yaml", []byte(s), 0644)
-
 	// fmt.Printf("Yaml: %v\n", s)
 
 	irYaml, err := r.api.GetYaml()
@@ -110,7 +116,10 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 	}
 
 	r.eventKey = r.config.eventKeyFunc(irYaml)
-	r.globalData = processor.GlobalProcessingData{TrackInfo: *trackInfo, EventDataInfo: *eventInfo}
+	r.globalData = processor.GlobalProcessingData{
+		TrackInfo:     *trackInfo,
+		EventDataInfo: *eventInfo,
+	}
 
 	req := service.RegisterEventRequest{
 		EventInfo: *eventInfo,
@@ -135,7 +144,9 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 
 func (r *Racelogger) UnregisterProvider() {
 	if err := r.dataprovider.UnregisterProvider(r.eventKey); err != nil {
-		log.Warn("Could not unregister event", log.String("eventKey", r.eventKey), log.ErrorField(err))
+		log.Warn("Could not unregister event",
+			log.String("eventKey", r.eventKey),
+			log.ErrorField(err))
 	}
 }
 
@@ -151,11 +162,13 @@ func (r *Racelogger) init() {
 		}
 	}
 	log.Debug("Telemetry data is available")
-
 }
 
-func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (*model.EventDataInfo, error) {
-
+//nolint:whitespace,unparam // can't get different linters happy
+func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (
+	*model.EventDataInfo,
+	error,
+) {
 	pitSpeed, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackPitSpeedLimit)
 	trackLength, _ := processor.GetTrackLengthInMeters(irYaml.WeekendInfo.TrackLength)
 	ret := model.EventDataInfo{
@@ -179,8 +192,8 @@ func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (*model.EventDataIn
 	return &ret, nil
 }
 
+//nolint:unparam // may be used later
 func (r *Racelogger) createTrackInfo(irYaml *yaml.IrsdkYaml) (*model.TrackInfo, error) {
-
 	trackLength, _ := processor.GetTrackLengthInMeters(irYaml.WeekendInfo.TrackLength)
 	ret := model.TrackInfo{
 		ID:        irYaml.WeekendInfo.TrackID,
@@ -201,6 +214,7 @@ func (r *Racelogger) convertSectors(sectors []yaml.Sectors) []model.Sector {
 	return ret
 }
 
+//nolint:gocritic // by design
 func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []model.EventSession {
 	ret := make([]model.EventSession, len(sectors))
 	for i, v := range sectors {
@@ -209,17 +223,17 @@ func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []model.EventSessi
 	return ret
 }
 
+//nolint:gocognit // by design
 func (r *Racelogger) setupWatchdog(interval time.Duration) {
 	postData := func(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debug("watchdog recieved ctx.Done")
+				log.Debug("watchdog received ctx.Done")
 				return
 			default:
 				if irsdk.CheckIfSimIsRunning() {
 					if r.api == nil {
-
 						log.Debug("Initializing irsdk api")
 
 						r.api = irsdk.NewIrsdk()
@@ -247,7 +261,7 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 					r.simIsRunning = false
 				}
 
-				time.Sleep(time.Duration(interval))
+				time.Sleep(interval)
 			}
 		}
 	}
@@ -255,13 +269,14 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 	go postData(r.config.ctx)
 }
 
+//nolint:gocognit // by design
 func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 	lastDriverInfo := yaml.DriverInfo{DriverCarIdx: 12}
 	postData := func(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debug("driverChangeDectector recieved ctx.Done")
+				log.Debug("driverChangeDectector received ctx.Done")
 				return
 			default:
 				if !r.simIsRunning {
@@ -271,7 +286,6 @@ func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 				r.api.GetData()
 
 				if work, err := r.api.GetYaml(); err == nil {
-
 					hasChanged := !reflect.DeepEqual(work.DriverInfo, lastDriverInfo)
 					if hasChanged {
 						log.Debug("DriverInfo have changed.")
@@ -283,17 +297,16 @@ func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 				} else {
 					fmt.Printf("Result of GetYaml(): %v\n", err)
 				}
-
 			}
-			time.Sleep(time.Duration(interval))
+			time.Sleep(interval)
 		}
 	}
 
 	go postData(r.config.ctx)
 }
 
+//nolint:gocognit,nestif,cyclop // by design
 func (r *Racelogger) setupMainLoop() {
-
 	stateChannel := make(chan model.StateData, 2)
 	speedmapChannel := make(chan model.SpeedmapData, 1)
 	carDataChannel := make(chan model.CarData, 1)
@@ -306,13 +319,11 @@ func (r *Racelogger) setupMainLoop() {
 		speedmapChannel,
 		carDataChannel,
 		extraInfoChannel,
-		processor.WithGlobalProcessingData(r.globalData),
+		processor.WithGlobalProcessingData(&r.globalData),
 		processor.WithChunkSize(10),
 		processor.WithRecordingDoneChannel(recordingDoneChannel),
 	)
 
-	// sessionProc := processor.NewSessionProc(r.api, stateChannel)
-	// r.processStateChannel(stateChannel)
 	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)
 	r.dataprovider.PublishSpeedmapDataFromChannel(r.eventKey, speedmapChannel)
 	r.dataprovider.PublishCarDataFromChannel(r.eventKey, carDataChannel)
@@ -323,10 +334,10 @@ func (r *Racelogger) setupMainLoop() {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debug("mainLoop recieved ctx.Done")
+				log.Debug("mainLoop received ctx.Done")
 				return
 			case _, more := <-recordingDoneChannel:
-				log.Debug("mainLoop recieved recordingDoneChannel", log.Bool("more", more))
+				log.Debug("mainLoop received recordingDoneChannel", log.Bool("more", more))
 				if !more {
 					log.Info("Recording done.")
 					r.config.cancel()
@@ -334,7 +345,8 @@ func (r *Racelogger) setupMainLoop() {
 				}
 			default:
 				if !r.simIsRunning {
-					log.Warn("Sim is not running. Should not happen", log.String("method", "mainLoop"))
+					log.Warn("Sim is not running. Should not happen",
+						log.String("method", "mainLoop"))
 					time.Sleep(time.Second)
 					continue
 				}
@@ -342,10 +354,10 @@ func (r *Racelogger) setupMainLoop() {
 					startProc := time.Now()
 					proc.Process()
 					durations = append(durations, time.Since(startProc))
-					// log.Debug("Processed data", log.Duration("duration", time.Since(startProc)))
+
 					if len(durations) == 120 {
 						// set min to 1s
-						min := time.Duration(1 * time.Second)
+						min := 1 * time.Second
 						max := time.Duration(0)
 						sum := int64(0)
 						for _, v := range durations {
@@ -358,34 +370,16 @@ func (r *Racelogger) setupMainLoop() {
 							sum += v.Nanoseconds()
 						}
 
-						log.Debug("Processed data", log.Duration("min", min), log.Duration("max", max), log.Duration("avg", time.Duration(sum/int64(len(durations)))))
+						log.Debug("Processed data",
+							log.Duration("min", min),
+							log.Duration("max", max),
+							log.Duration("avg", time.Duration(sum/int64(len(durations)))))
 						durations = []time.Duration{}
-
 					}
 				}
-				// log.Debug("end of loop")
-				// time.Sleep(time.Second)
 			}
 		}
 	}
 
 	go mainLoop(r.config.ctx)
-}
-
-func (r *Racelogger) processStateChannel(stateChannel chan model.StateData) {
-	handleChannelMessages := func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Debug("processStateChannel recieved ctx.Done")
-				return
-			case msg := <-stateChannel:
-				{
-					log.Debug("recieved stateChannel msg", log.Any("msg", msg))
-				}
-
-			}
-		}
-	}
-	go handleChannelMessages(r.config.ctx)
 }

@@ -13,7 +13,6 @@ type PitBoundaryData struct {
 }
 
 func (p *PitBoundaryData) update(trackPos float64) {
-
 	if len(p.history) < p.keepHistory {
 		p.history = append(p.history, trackPos)
 		p.compute()
@@ -34,9 +33,8 @@ func (p *PitBoundaryData) compute() {
 }
 
 type PitBoundaryProc struct {
-	pitEntry  PitBoundaryData
-	pitExit   PitBoundaryData
-	wasCalled bool
+	pitEntry PitBoundaryData
+	pitExit  PitBoundaryData
 }
 
 func NewPitBoundaryProc() *PitBoundaryProc {
@@ -48,9 +46,8 @@ func NewPitBoundaryProc() *PitBoundaryProc {
 
 func (p *PitBoundaryProc) processPitEntry(trackPos float64) {
 	p.pitEntry.update(trackPos)
-
 }
+
 func (p *PitBoundaryProc) processPitExit(trackPos float64) {
 	p.pitExit.update(trackPos)
-
 }

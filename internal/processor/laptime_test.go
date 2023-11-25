@@ -1,3 +1,4 @@
+//nolint:lll,funlen,gocognit,gocritic,nestif,dupl // better readability
 package processor
 
 import (
@@ -53,7 +54,8 @@ func sampleBestSectionProc() *BestSectionProc {
 	ret.lap = map[string]float64{
 		"overall": 10.0,
 		"class10": 10.0, "car100": 10.0, "car101": 15.0,
-		"class20": 20.0, "car200": 20.0, "car201": 25.0}
+		"class20": 20.0, "car200": 20.0, "car201": 25.0,
+	}
 	return ret
 }
 
@@ -68,7 +70,6 @@ var withPersonal = func(t float64) STF {
 }
 
 func TestBestSectionProc_markLap(t *testing.T) {
-
 	type args struct {
 		carClassId int
 		carId      int
@@ -112,13 +113,11 @@ func patchTime(d []TestData, ref int, time float64) *TestData {
 }
 
 func TestBestSectionProc_markNewOB(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		input    []TestData
 		expected []TestData
 	}{
-
 		{
 			name: "Existing overall best",
 			input: []TestData{
@@ -224,7 +223,6 @@ func TestBestSectionProc_markNewOB(t *testing.T) {
 				diff := cmp.Diff(tt.input, tt.expected, cmp.AllowUnexported(CarLaptiming{}, SectionTiming{}, TimeWithMarker{}))
 				t.Errorf("TestBestSectionProc_markNewOB() = %v, want %v diff: %s", tt.input, tt.expected, diff)
 			}
-
 		})
 	}
 }
@@ -240,7 +238,6 @@ func TestBestSectionProc_markClassBest(t *testing.T) {
 		patchArgs args
 		expected  []TestData
 	}{
-
 		{
 			name: "New class best",
 			input: []TestData{
@@ -292,10 +289,10 @@ func TestBestSectionProc_markClassBest(t *testing.T) {
 				diff := cmp.Diff(tt.input, tt.expected, cmp.AllowUnexported(CarLaptiming{}, SectionTiming{}, TimeWithMarker{}))
 				t.Errorf("TestBestSectionProc_markClassBest() = %v, want %v diff: %s", tt.input, tt.expected, diff)
 			}
-
 		})
 	}
 }
+
 func TestBestSectionProc_markCarBest(t *testing.T) {
 	type args struct {
 		ref  int
@@ -307,7 +304,6 @@ func TestBestSectionProc_markCarBest(t *testing.T) {
 		patchArgs args
 		expected  []TestData
 	}{
-
 		{
 			name: "New car best",
 			input: []TestData{
@@ -345,7 +341,6 @@ func TestBestSectionProc_markCarBest(t *testing.T) {
 				diff := cmp.Diff(tt.input, tt.expected, cmp.AllowUnexported(CarLaptiming{}, SectionTiming{}, TimeWithMarker{}))
 				t.Errorf("TestBestSectionProc_markCarBest() = %v, want %v diff: %s", tt.input, tt.expected, diff)
 			}
-
 		})
 	}
 }
@@ -361,7 +356,6 @@ func TestBestSectionProc_removeMarker(t *testing.T) {
 		patchArgs args
 		expected  []TestData
 	}{
-
 		{
 			name: "Existing overall best",
 			input: []TestData{
@@ -435,7 +429,6 @@ func TestBestSectionProc_removeMarker(t *testing.T) {
 				diff := cmp.Diff(tt.input, tt.expected, cmp.AllowUnexported(CarLaptiming{}, SectionTiming{}, TimeWithMarker{}))
 				t.Errorf("TestBestSectionProc_markNewOB() = %v, want %v diff: %s", tt.input, tt.expected, diff)
 			}
-
 		})
 	}
 }

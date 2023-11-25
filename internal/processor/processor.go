@@ -25,7 +25,7 @@ type Options struct {
 	SpeedmapPublishInterval time.Duration
 	CarDataPublishInterval  time.Duration
 	ChunkSize               int // speedmap chunk size
-	GlobalProcessingData    GlobalProcessingData
+	GlobalProcessingData    *GlobalProcessingData
 	RecordingDoneChannel    chan struct{}
 }
 
@@ -64,7 +64,7 @@ func WithChunkSize(i int) OptionsFunc {
 	}
 }
 
-func WithGlobalProcessingData(gpd GlobalProcessingData) OptionsFunc {
+func WithGlobalProcessingData(gpd *GlobalProcessingData) OptionsFunc {
 	return func(o *Options) {
 		o.GlobalProcessingData = gpd
 	}
@@ -81,7 +81,6 @@ type Processor struct {
 	options              *Options
 	lastTimeSendState    time.Time
 	lastTimeSendSpeedmap time.Time
-	lastTimeSendCardata  time.Time
 	sessionProc          SessionProc
 	carProc              *CarProc
 	speedmapProc         *SpeedmapProc
@@ -93,10 +92,9 @@ type Processor struct {
 	stateOutput          chan model.StateData
 	speedmapOutput       chan model.SpeedmapData
 	extraInfoOutput      chan model.ExtraInfo
-
-	recordingDoneChannel chan struct{}
 }
 
+//nolint:whitespace // can't get different linters happy
 func NewProcessor(
 	api *irsdk.Irsdk,
 	stateOutput chan model.StateData,
@@ -114,10 +112,10 @@ func NewProcessor(
 	carDriverProc := NewCarDriverProc(api, cardataOutput)
 	messageProc := NewMessageProc(carDriverProc)
 	carDriverProc.SetReportChangeFunc(messageProc.DriverEnteredCar)
-	speedmapProc := NewSpeedmapProc(api, opts.ChunkSize, &opts.GlobalProcessingData)
+	speedmapProc := NewSpeedmapProc(api, opts.ChunkSize, opts.GlobalProcessingData)
 	carProc := NewCarProc(
 		api,
-		&opts.GlobalProcessingData,
+		opts.GlobalProcessingData,
 		carDriverProc,
 		pitBoundaryProc,
 		speedmapProc,
@@ -187,14 +185,14 @@ func (p *Processor) Process() {
 		var freshYaml yaml.IrsdkYaml
 		if err := goyaml.Unmarshal([]byte(p.api.GetYamlString()), &freshYaml); err != nil {
 			// let's try to repair the yaml and unmarshal again
-			err := goyaml.Unmarshal([]byte(p.api.RepairedYaml(p.api.GetYamlString())), &freshYaml)
+			err := goyaml.Unmarshal([]byte(p.api.RepairedYaml(p.api.GetYamlString())),
+				&freshYaml)
 			if err != nil {
 				log.Error("Error unmarshalling irsdk yaml", log.ErrorField(err))
 				return
 			}
 		}
-		// fmt.Printf("Delta: %v\n", cmp.Diff(y.DriverInfo, p.lastDriverInfo))
-		// p.lastDriverInfo = reflect.ValueOf(y.DriverInfo).Interface().(yaml.DriverInfo)
+
 		p.lastDriverInfo = freshYaml.DriverInfo
 		p.carDriverProc.Process(&freshYaml)
 	}
@@ -214,7 +212,6 @@ func (p *Processor) sendSpeedmapMessage() {
 		Payload:   p.speedmapProc.CreatePayload(),
 	}
 
-	// log.Debug("About to send new speedmap data", log.Any("msg", data))
 	p.speedmapOutput <- data
 	p.lastTimeSendSpeedmap = time.Now()
 }
@@ -229,8 +226,6 @@ func (p *Processor) sendStateMessage() {
 			Messages: p.messageProc.CreatePayload(),
 		},
 	}
-	// log.Debug("About to send new state data", log.Any("msg", data))
-	// log.Debug("CarProc data", log.Any("prevLapDistPct", p.carProc.prevLapDistPct))
 	p.stateOutput <- data
 	p.lastTimeSendState = time.Now()
 	p.messageProc.Clear()

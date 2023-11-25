@@ -1,3 +1,4 @@
+//nolint:gocritic // by design
 package processor
 
 import (
@@ -119,7 +120,6 @@ func GetMetricUnit(s string) (float64, error) {
 	value := matches[re.SubexpIndex("value")]
 	unit := matches[re.SubexpIndex("unit")]
 	if f, err := strconv.ParseFloat(value, 64); err == nil {
-
 		if slices.Contains([]string{"m", "km", "kph", "C"}, unit) {
 			return f, nil
 		}
@@ -129,7 +129,6 @@ func GetMetricUnit(s string) (float64, error) {
 		default:
 			return f, nil
 		}
-
 	} else {
 		return 0, err
 	}

@@ -13,7 +13,7 @@ type PublicClient struct {
 	client *client.Client
 }
 
-func NewPublicClient(url string, realm string) *PublicClient {
+func NewPublicClient(url, realm string) *PublicClient {
 	logger := log.New(os.Stdout, "", 0)
 	cfg := client.Config{Realm: realm, Logger: logger}
 	// Connect wampClient session.
@@ -35,7 +35,13 @@ func (pc *PublicClient) Client() *client.Client {
 }
 
 func (pc *PublicClient) GetVersion() (string, error) {
-	result, err := pc.client.Call(context.Background(), "racelog.public.get_version", nil, wamp.List{}, nil, nil)
+	result, err := pc.client.Call(
+		context.Background(),
+		"racelog.public.get_version",
+		nil,
+		wamp.List{},
+		nil,
+		nil)
 	if err != nil {
 		return "", err
 	}
@@ -44,6 +50,6 @@ func (pc *PublicClient) GetVersion() (string, error) {
 		return "", ErrNoResults
 	}
 	ret, _ := wamp.AsDict(result.Arguments[0])
-	version, _ := ret["ownVersion"]
+	version := ret["ownVersion"]
 	return version.(string), nil
 }

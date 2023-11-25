@@ -54,7 +54,12 @@ type SectionTiming struct {
 }
 
 func defaultSectionTiming() SectionTiming {
-	return SectionTiming{startTime: -1, stopTime: -1, duration: TimeWithMarker{time: -1, marker: ""}, personalBest: math.MaxFloat64}
+	return SectionTiming{
+		startTime:    -1,
+		stopTime:     -1,
+		duration:     TimeWithMarker{time: -1, marker: ""},
+		personalBest: math.MaxFloat64,
+	}
 }
 
 func (s *SectionTiming) markStart(t float64) {
@@ -103,7 +108,12 @@ type (
 	}
 )
 
-func NewBestSectionProc(numSectors int, carClassIds, carIds []int, collector CollectCarLaptiming) *BestSectionProc {
+//nolint:whitespace // can't get different linters happy
+func NewBestSectionProc(
+	numSectors int,
+	carClassIds, carIds []int,
+	collector CollectCarLaptiming,
+) *BestSectionProc {
 	initData := func() map[string]float64 {
 		ret := map[string]float64{}
 		ret["overall"] = math.MaxFloat64
@@ -127,17 +137,26 @@ func NewBestSectionProc(numSectors int, carClassIds, carIds []int, collector Col
 	}
 }
 
-func (b *BestSectionProc) markSector(st *SectionTiming, numSector int, carClassId int, carId int) string {
+//nolint:whitespace // can't get different linters happy
+func (b *BestSectionProc) markSector(
+	st *SectionTiming,
+	numSector, carClassId, carId int,
+) string {
 	return b.markInternal(b.sectors[numSector], st, carClassId, carId,
 		func(cl *CarLaptiming) *SectionTiming { return cl.sectors[numSector] },
 	)
 }
 
-func (b *BestSectionProc) markLap(st *SectionTiming, carClassId int, carId int) string {
+//nolint:whitespace // can't get different linters happy
+func (b *BestSectionProc) markLap(
+	st *SectionTiming,
+	carClassId, carId int,
+) string {
 	return b.markInternal(b.lap, st, carClassId, carId,
 		func(cl *CarLaptiming) *SectionTiming { return cl.lap })
 }
 
+//nolint:funlen,gocognit,cyclop,gocyclo,whitespace // better readability
 func (b *BestSectionProc) markInternal(
 	m map[string]float64,
 	st *SectionTiming,
@@ -172,7 +191,11 @@ func (b *BestSectionProc) markInternal(
 		return nil
 	}
 
-	handleDegrade := func(otherCar *SectionTiming, otherGeneric *SectionTiming, otherByCar []*CarLaptiming, marker string) {
+	handleDegrade := func(
+		otherCar, otherGeneric *SectionTiming,
+		otherByCar []*CarLaptiming,
+		marker string,
+	) {
 		if otherCar != nil {
 			otherCar.markDuration(MarkerPersonalBest)
 			otherGeneric.markDuration(MarkerCarBest)
@@ -265,7 +288,6 @@ func (b *BestSectionProc) markInternal(
 	if st.duration.time < st.personalBest {
 		st.personalBest = st.duration.time
 		st.markDuration(MarkerPersonalBest)
-		// remarkOthers(numSector, MarkerPersonalBest, MarkerClassBest)
 		return MarkerPersonalBest
 	}
 
