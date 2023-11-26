@@ -16,7 +16,7 @@ dist/**
 # Ignore config files from project root, keeping sample config files
 /configs**
 !/configs.**.sample
-racelogger.yml
+/racelogger.yml
 
 # Ignore private dotfiles
 .gitconfig.local*

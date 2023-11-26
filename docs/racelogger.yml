@@ -1,0 +1,7 @@
+# This will be the configuration file for the release process.
+# It can be used a template
+
+# Enter the websocket address of the WAMP router here
+url: wss://crossbar.iracing-tools.de
+# Enter the password of the dataprovider user here
+password:
