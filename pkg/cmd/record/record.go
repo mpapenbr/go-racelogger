@@ -6,12 +6,13 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mpapenbr/go-racelogger/internal"
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 	"github.com/mpapenbr/go-racelogger/pkg/util"
 	"github.com/mpapenbr/go-racelogger/pkg/wamp"
-	"github.com/spf13/cobra"
 )
 
 var (

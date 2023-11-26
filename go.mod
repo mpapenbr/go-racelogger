@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/google/uuid v1.4.0
-	github.com/mpapenbr/goirsdk v0.4.3
+	github.com/mpapenbr/goirsdk v0.4.4
 	github.com/mpapenbr/iracelog-service-manager-go v0.9.0
 	github.com/samber/lo v1.38.1
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
+
+	"github.com/mpapenbr/go-racelogger/log"
 )
 
 // collects speed data for a chunk of track

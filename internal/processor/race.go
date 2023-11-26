@@ -4,8 +4,9 @@ package processor
 import (
 	"time"
 
-	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/goirsdk/irsdk"
+
+	"github.com/mpapenbr/go-racelogger/log"
 )
 
 type raceState interface {

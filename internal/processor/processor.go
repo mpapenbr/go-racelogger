@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/goirsdk/irsdk"
-	"github.com/mpapenbr/goirsdk/yaml"
+	iryaml "github.com/mpapenbr/goirsdk/yaml"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
-	goyaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
+
+	"github.com/mpapenbr/go-racelogger/log"
 )
 
 type (
@@ -88,7 +89,7 @@ type Processor struct {
 	raceProc             *RaceProc
 	messageProc          *MessageProc
 	pitBoundaryProc      *PitBoundaryProc
-	lastDriverInfo       yaml.DriverInfo
+	lastDriverInfo       iryaml.DriverInfo
 	stateOutput          chan model.StateData
 	speedmapOutput       chan model.SpeedmapData
 	extraInfoOutput      chan model.ExtraInfo
@@ -182,10 +183,10 @@ func (p *Processor) Process() {
 		!cmp.Equal(y.DriverInfo, p.lastDriverInfo) {
 
 		log.Info("DriverInfo changed, updating state")
-		var freshYaml yaml.IrsdkYaml
-		if err := goyaml.Unmarshal([]byte(p.api.GetYamlString()), &freshYaml); err != nil {
+		var freshYaml iryaml.IrsdkYaml
+		if err := yaml.Unmarshal([]byte(p.api.GetYamlString()), &freshYaml); err != nil {
 			// let's try to repair the yaml and unmarshal again
-			err := goyaml.Unmarshal([]byte(p.api.RepairedYaml(p.api.GetYamlString())),
+			err := yaml.Unmarshal([]byte(p.api.RepairedYaml(p.api.GetYamlString())),
 				&freshYaml)
 			if err != nil {
 				log.Error("Error unmarshalling irsdk yaml", log.ErrorField(err))

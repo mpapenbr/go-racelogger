@@ -8,11 +8,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"golang.org/x/exp/slices"
+
+	"github.com/mpapenbr/go-racelogger/log"
 )
 
 var ErrUnknownValueWithUnit = errors.New("Unknown value with unit format")

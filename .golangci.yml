@@ -103,8 +103,8 @@ linters-settings:
     statements: 30
 
   gci:
-    no-inline-comments: false
-    no-prefix-comments: false
+    # no-inline-comments: false
+    # no-prefix-comments: false
 
     # sorts imports with prefix after 3rd-party packages; supports only one prefix - if
     # not set, uses goimports.local-prefixes
@@ -112,8 +112,11 @@ linters-settings:
       - standard # standard packages
       - default # all other imports that do not fall in any group
       - prefix(github.com/mpapenbr/go-racelogger) # internal imports from `go-racelogger`
-    section-separators:
-      - newLine
+      - blank
+      - dot
+    # section-separators:
+    #   - newLine
+    custom-order: true
 
   gocognit:
     # minimal code complexity to report, 30 by default (recommended 10-20)

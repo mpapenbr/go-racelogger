@@ -3,9 +3,10 @@ package util
 import (
 	"time"
 
+	"github.com/mpapenbr/goirsdk/irsdk"
+
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
-	"github.com/mpapenbr/goirsdk/irsdk"
 )
 
 func WaitForSimulation() bool {

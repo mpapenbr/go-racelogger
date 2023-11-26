@@ -3,11 +3,12 @@ package ping
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 	"github.com/mpapenbr/go-racelogger/pkg/util"
 	"github.com/mpapenbr/go-racelogger/pkg/wamp"
-	"github.com/spf13/cobra"
 )
 
 func NewPingCmd() *cobra.Command {

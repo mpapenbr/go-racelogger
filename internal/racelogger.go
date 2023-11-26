@@ -11,17 +11,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mpapenbr/goirsdk/irsdk"
+	"github.com/mpapenbr/goirsdk/yaml"
+	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
+	"github.com/mpapenbr/iracelog-service-manager-go/pkg/service"
+	goyaml "gopkg.in/yaml.v3"
 
 	"github.com/mpapenbr/go-racelogger/internal/processor"
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 	"github.com/mpapenbr/go-racelogger/pkg/wamp"
 	"github.com/mpapenbr/go-racelogger/version"
-	"github.com/mpapenbr/goirsdk/irsdk"
-	"github.com/mpapenbr/goirsdk/yaml"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/service"
-	goyaml "gopkg.in/yaml.v3"
 )
 
 type (

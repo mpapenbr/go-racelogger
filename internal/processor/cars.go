@@ -7,10 +7,11 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
 	"golang.org/x/exp/slices"
+
+	"github.com/mpapenbr/go-racelogger/log"
 )
 
 // this struct is responsible for processing overall car data.
