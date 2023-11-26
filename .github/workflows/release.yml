@@ -7,6 +7,9 @@ on:
 jobs:
   goreleaser:
     runs-on: windows-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -30,13 +33,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: prepare changlog
+        shell: bash
         run: |
-          echo "${{ steps.rd.outputs.body }}" > /tmp/CHANGELOG.md
+          echo "${{ steps.rd.outputs.body }}" > CHANGELOG-tmp.md
 
       - name: Release via goreleaser
         uses: goreleaser/goreleaser-action@v5
         with:
-          args: release --release-notes=/tmp/CHANGELOG.md
+          args: release --release-notes=CHANGELOG-tmp.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
