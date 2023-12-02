@@ -15,7 +15,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/mpapenbr/goirsdk v0.4.4
 	github.com/mpapenbr/iracelog-service-manager-go v0.9.0
-	github.com/samber/lo v1.38.1
+	github.com/samber/lo v1.39.0
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/mod v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
