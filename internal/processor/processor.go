@@ -1,10 +1,8 @@
 package processor
 
 import (
-	"reflect"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	iryaml "github.com/mpapenbr/goirsdk/yaml"
 	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
@@ -179,9 +177,7 @@ func (p *Processor) Process() {
 	y := p.api.GetLatestYaml()
 	p.raceProc.Process()
 
-	if !reflect.DeepEqual(y.DriverInfo, p.lastDriverInfo) &&
-		!cmp.Equal(y.DriverInfo, p.lastDriverInfo) {
-
+	if p.hasDriverChange(&y.DriverInfo, &p.lastDriverInfo) {
 		log.Info("DriverInfo changed, updating state")
 		var freshYaml iryaml.IrsdkYaml
 		if err := yaml.Unmarshal([]byte(p.api.GetYamlString()), &freshYaml); err != nil {
@@ -230,4 +226,33 @@ func (p *Processor) sendStateMessage() {
 	p.stateOutput <- data
 	p.lastTimeSendState = time.Now()
 	p.messageProc.Clear()
+}
+
+// checks if relevant driver info changed
+// we need this to detect new drivers and driver changes in team races
+func (p *Processor) hasDriverChange(current, last *iryaml.DriverInfo) bool {
+	if len(current.Drivers) != len(last.Drivers) {
+		return true
+	}
+	createLookup := func(data []iryaml.Drivers) map[int]string {
+		ret := make(map[int]string)
+		for i := 0; i < len(data); i++ {
+			ret[data[i].CarIdx] = data[i].UserName
+		}
+		return ret
+	}
+	currentLookup := createLookup(current.Drivers)
+	lastLookup := createLookup(last.Drivers)
+	changeDetected := false
+	for k, v := range currentLookup {
+		if lastLookup[k] != v {
+			log.Debug("Driver change detected",
+				log.Int("carIdx", k),
+				log.String("current", v),
+				log.String("last", lastLookup[k]),
+			)
+			changeDetected = true
+		}
+	}
+	return changeDetected
 }

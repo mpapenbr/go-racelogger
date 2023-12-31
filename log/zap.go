@@ -184,6 +184,7 @@ func New(writer io.Writer, level Level, opts ...Option) *Logger {
 	cfg.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format("2006-01-02T15:04:05.000Z0700"))
 	}
+	cfg.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(cfg.EncoderConfig),
@@ -199,7 +200,7 @@ func New(writer io.Writer, level Level, opts ...Option) *Logger {
 
 // DevLogger create a new logger for development.
 //
-//nolint:dupl //yes, very similar to New
+//nolint:dupl //yes, very similar to ProdLogger
 func DevLogger(writer io.Writer, level Level, opts ...Option) *Logger {
 	if writer == nil {
 		panic("the writer is nil")
@@ -209,6 +210,7 @@ func DevLogger(writer io.Writer, level Level, opts ...Option) *Logger {
 	cfg.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format("2006-01-02T15:04:05.000"))
 	}
+	cfg.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 	core := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(cfg.EncoderConfig),
 		zapcore.AddSync(writer),

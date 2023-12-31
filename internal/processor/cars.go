@@ -223,10 +223,6 @@ func (p *CarProc) Process() {
 				}
 			}
 			p.computeTimes(carData)
-
-			// compute times for car
-			// compute speed for car
-			// call postProcess for carData
 		}
 	}
 	// at this point all cars have been processed
@@ -249,7 +245,9 @@ func (p *CarProc) Process() {
 	for _, c := range processableCars {
 		p.carLookup[c].PostProcess()
 	}
-	p.speedmapProc.SetLeaderTrackPos(p.getInCurrentRaceOrder()[0].trackPos)
+	if len(p.getInCurrentRaceOrder()) > 0 {
+		p.speedmapProc.SetLeaderTrackPos(p.getInCurrentRaceOrder()[0].trackPos)
+	}
 	// copy data for next iteration
 	p.prevSessionTime = currentTime
 	p.prevLapDistPct = make([]float32,
@@ -401,6 +399,9 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 //nolint:lll // better readability
 func (p *CarProc) calcDelta() {
 	currentRaceOrder := p.getInCurrentRaceOrder()
+	if len(currentRaceOrder) == 0 {
+		return
+	}
 	for i, car := range currentRaceOrder[1:] {
 		// since i starts at 0 we use this as index for currentRaceOrder for the car in front
 		// note the range skips the first car in currentRaceOrder
