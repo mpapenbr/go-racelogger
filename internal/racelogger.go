@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -305,7 +306,7 @@ func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 	go postData(r.config.ctx)
 }
 
-//nolint:gocognit,nestif,cyclop // by design
+//nolint:gocognit // by design
 func (r *Racelogger) setupMainLoop() {
 	stateChannel := make(chan model.StateData, 2)
 	speedmapChannel := make(chan model.SpeedmapData, 1)
@@ -356,30 +357,50 @@ func (r *Racelogger) setupMainLoop() {
 					durations = append(durations, time.Since(startProc))
 
 					if len(durations) == 120 {
-						// set min to 1s
-						min := 1 * time.Second
-						max := time.Duration(0)
-						sum := int64(0)
-						for _, v := range durations {
-							if v < min {
-								min = v
-							}
-							if v > max {
-								max = v
-							}
-							sum += v.Nanoseconds()
-						}
-
-						log.Debug("Processed data",
-							log.Duration("min", min),
-							log.Duration("max", max),
-							log.Duration("avg", time.Duration(sum/int64(len(durations)))))
+						logDurations(durations)
 						durations = []time.Duration{}
 					}
+				} else {
+					log.Warn("no new data available")
 				}
 			}
 		}
 	}
 
 	go mainLoop(r.config.ctx)
+}
+
+func logDurations(durations []time.Duration) {
+	min := 1 * time.Second
+	max := time.Duration(0)
+	sum := int64(0)
+	zeroDurations := 0
+	validDurations := 0
+	for _, v := range durations {
+		if v.Milliseconds() == 0 {
+			zeroDurations++
+			continue
+		}
+		validDurations++
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+		sum += v.Nanoseconds()
+	}
+
+	durationsStrs := make([]string, len(durations))
+	for i, d := range durations {
+		durationsStrs[i] = d.String()
+	}
+
+	log.Debug("Processed data",
+		log.Int("zeroDurations", zeroDurations),
+		log.Int("validDurations", validDurations),
+		log.Duration("min", min),
+		log.Duration("max", max),
+		log.Duration("avg", time.Duration(sum/int64(validDurations))),
+		log.String("durations", strings.Join(durationsStrs, ",")))
 }

@@ -78,7 +78,7 @@ func shouldRecord(api *irsdk.Irsdk) bool {
 
 //nolint:gocritic // this is ok
 func isRealDriver(d yaml.Drivers) bool {
-	return d.IsSpectator == 0 && d.CarIsPaceCar == 0
+	return d.IsSpectator == 0 && d.CarIsPaceCar == 0 && len(d.UserName) > 0
 }
 
 func getProcessableCarIdxs(drivers []yaml.Drivers) []int {

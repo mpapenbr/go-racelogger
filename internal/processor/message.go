@@ -45,7 +45,7 @@ func (p *MessageProc) DriverEnteredCar(carIdx int) {
 }
 
 func (p *MessageProc) ReportDriverLap(carIdx int, twm TimeWithMarker) {
-	log.Debug("Driver entered car", log.Int("carIdx", carIdx))
+	log.Debug("Report driver lap", log.Int("carIdx", carIdx))
 	p.buffer = append(p.buffer, GenericMessage{
 		"type":     "Timing",
 		"subType":  "Driver",
