@@ -7,7 +7,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -28,9 +27,10 @@ import (
 type (
 	EventKeyFunc func(*yaml.IrsdkYaml) string
 	Config       struct {
-		ctx          context.Context
-		cancel       context.CancelFunc
-		eventKeyFunc EventKeyFunc
+		ctx                context.Context
+		cancel             context.CancelFunc
+		eventKeyFunc       EventKeyFunc
+		waitForDataTimeout time.Duration
 	}
 )
 type ConfigFunc func(cfg *Config)
@@ -47,7 +47,8 @@ type Racelogger struct {
 
 func defaultConfig() *Config {
 	return &Config{
-		eventKeyFunc: defaultEventKeyFunc,
+		eventKeyFunc:       defaultEventKeyFunc,
+		waitForDataTimeout: 1 * time.Second,
 	}
 }
 
@@ -66,6 +67,10 @@ func defaultEventKeyFunc(irYaml *yaml.IrsdkYaml) string {
 
 func WithContext(ctx context.Context, cancelFunc context.CancelFunc) ConfigFunc {
 	return func(cfg *Config) { cfg.ctx = ctx; cfg.cancel = cancelFunc }
+}
+
+func WithWaitForDataTimeout(t time.Duration) ConfigFunc {
+	return func(cfg *Config) { cfg.waitForDataTimeout = t }
 }
 
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
@@ -270,7 +275,6 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 	go postData(r.config.ctx)
 }
 
-//nolint:gocognit // by design
 func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 	lastDriverInfo := yaml.DriverInfo{DriverCarIdx: 12}
 	postData := func(ctx context.Context) {
@@ -283,20 +287,14 @@ func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
 				if !r.simIsRunning {
 					continue
 				}
+				work := r.api.GetLatestYaml()
 
-				r.api.GetData()
-
-				if work, err := r.api.GetYaml(); err == nil {
-					hasChanged := !reflect.DeepEqual(work.DriverInfo, lastDriverInfo)
-					if hasChanged {
-						log.Debug("DriverInfo have changed.")
-						lastDriverInfo = work.DriverInfo
-						data := make(map[string]interface{})
-						data["changedDriverInfo"] = work.DriverInfo
-						r.dataprovider.PublishDriverData(r.eventKey, &lastDriverInfo)
-					}
-				} else {
-					fmt.Printf("Result of GetYaml(): %v\n", err)
+				if processor.HasDriverChange(&work.DriverInfo, &lastDriverInfo) {
+					log.Debug("DriverInfo have changed.")
+					lastDriverInfo = work.DriverInfo
+					data := make(map[string]interface{})
+					data["changedDriverInfo"] = work.DriverInfo
+					r.dataprovider.PublishDriverData(r.eventKey, &lastDriverInfo)
 				}
 			}
 			time.Sleep(interval)
@@ -331,7 +329,8 @@ func (r *Racelogger) setupMainLoop() {
 	r.dataprovider.SendExtraInfoFromChannel(r.eventKey, extraInfoChannel)
 
 	mainLoop := func(ctx context.Context) {
-		durations := []time.Duration{}
+		procDurations := []time.Duration{}
+		getDataDurations := []time.Duration{}
 		for {
 			select {
 			case <-ctx.Done():
@@ -351,14 +350,22 @@ func (r *Racelogger) setupMainLoop() {
 					time.Sleep(time.Second)
 					continue
 				}
-				if r.api.GetData() {
+
+				startGetData := time.Now()
+				ok := r.api.GetDataWithDataReadyTimeout(r.config.waitForDataTimeout)
+				getDataDurations = append(getDataDurations, time.Since(startGetData))
+				if len(getDataDurations) == 120 {
+					logDurations("getData", getDataDurations)
+					getDataDurations = []time.Duration{}
+				}
+				if ok {
 					startProc := time.Now()
 					proc.Process()
-					durations = append(durations, time.Since(startProc))
+					procDurations = append(procDurations, time.Since(startProc))
 
-					if len(durations) == 120 {
-						logDurations(durations)
-						durations = []time.Duration{}
+					if len(procDurations) == 120 {
+						logDurations("processedData", procDurations)
+						procDurations = []time.Duration{}
 					}
 				} else {
 					log.Warn("no new data available")
@@ -370,14 +377,15 @@ func (r *Racelogger) setupMainLoop() {
 	go mainLoop(r.config.ctx)
 }
 
-func logDurations(durations []time.Duration) {
+func logDurations(msg string, durations []time.Duration) {
 	min := 1 * time.Second
 	max := time.Duration(0)
 	sum := int64(0)
+	avg := time.Duration(0)
 	zeroDurations := 0
 	validDurations := 0
 	for _, v := range durations {
-		if v.Milliseconds() == 0 {
+		if v.Nanoseconds() == 0 {
 			zeroDurations++
 			continue
 		}
@@ -395,12 +403,14 @@ func logDurations(durations []time.Duration) {
 	for i, d := range durations {
 		durationsStrs[i] = d.String()
 	}
-
-	log.Debug("Processed data",
+	if validDurations > 0 {
+		avg = time.Duration(sum / int64(validDurations))
+	}
+	log.Debug(msg,
 		log.Int("zeroDurations", zeroDurations),
 		log.Int("validDurations", validDurations),
 		log.Duration("min", min),
 		log.Duration("max", max),
-		log.Duration("avg", time.Duration(sum/int64(validDurations))),
+		log.Duration("avg", avg),
 		log.String("durations", strings.Join(durationsStrs, ",")))
 }

@@ -29,7 +29,7 @@ type RaceInvalid struct{}
 func (ri *RaceInvalid) Enter() { log.Info("Entering state: RaceInvalid") }
 func (ri *RaceInvalid) Exit()  { log.Info("Leaving state: RaceInvalid") }
 func (ri *RaceInvalid) Update(rp *RaceProc) {
-	y, _ := rp.api.GetYaml()
+	y := rp.api.GetLatestYaml()
 	sessionNum := justValue(rp.api.GetIntValue("SessionNum")).(int32)
 	if y.SessionInfo.Sessions[sessionNum].SessionType == "Race" {
 		sessionSate := justValue(rp.api.GetIntValue("SessionState")).(int32)
