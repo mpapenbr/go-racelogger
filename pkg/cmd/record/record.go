@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -44,6 +45,10 @@ func NewRecordCmd() *cobra.Command {
 		"wait",
 		"60s",
 		"Wait for running iRacing Sim")
+	cmd.Flags().StringVar(&config.WaitForData,
+		"wait-for-data",
+		"1s",
+		"Timeout to wait for irsdk to signal valid data")
 	cmd.Flags().StringVarP(&config.Password,
 		"password",
 		"p",
@@ -82,8 +87,18 @@ func recordEvent() error {
 	// }
 	// stdLogger.Printf("something\n")
 
+	// log.Debug("Starting wamp client")
+	var waitForData time.Duration
+	var err error
+	waitForData, err = time.ParseDuration(config.WaitForData)
+	if err != nil {
+		waitForData = time.Second
+	}
 	ctx, cancel := context.WithCancel(context.Background())
-	r := internal.NewRaceLogger(internal.WithContext(ctx, cancel))
+	r := internal.NewRaceLogger(
+		internal.WithContext(ctx, cancel),
+		internal.WithWaitForDataTimeout(waitForData),
+	)
 	defer r.Close()
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)

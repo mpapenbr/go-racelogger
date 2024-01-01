@@ -202,3 +202,32 @@ func collectCars(drivers []yaml.Drivers) []model.CarInfo {
 	}
 	return ret
 }
+
+// checks if relevant driver info changed
+// we need this to detect new drivers and driver changes in team races
+func HasDriverChange(current, last *yaml.DriverInfo) bool {
+	if len(current.Drivers) != len(last.Drivers) {
+		return true
+	}
+	createLookup := func(data []yaml.Drivers) map[int]string {
+		ret := make(map[int]string)
+		for i := 0; i < len(data); i++ {
+			ret[data[i].CarIdx] = data[i].UserName
+		}
+		return ret
+	}
+	currentLookup := createLookup(current.Drivers)
+	lastLookup := createLookup(last.Drivers)
+	changeDetected := false
+	for k, v := range currentLookup {
+		if lastLookup[k] != v {
+			log.Debug("Driver change detected",
+				log.Int("carIdx", k),
+				log.String("current", v),
+				log.String("last", lastLookup[k]),
+			)
+			changeDetected = true
+		}
+	}
+	return changeDetected
+}

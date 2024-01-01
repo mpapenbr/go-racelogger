@@ -1,6 +1,12 @@
+//nolint:funlen // by design for tests
 package processor
 
-import "testing"
+import (
+	"testing"
+
+	iryaml "github.com/mpapenbr/goirsdk/yaml"
+	"gopkg.in/yaml.v3"
+)
 
 func TestGetMetricUnit(t *testing.T) {
 	type args struct {
@@ -27,6 +33,106 @@ func TestGetMetricUnit(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("GetMetricUnit() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHasDriverChange(t *testing.T) {
+	type args struct {
+		current string
+		last    string
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		// TODO: Add test cases.
+		{
+			"no change",
+			args{
+				current: `
+Drivers:
+- CarIdx: 1
+  UserName: A
+`,
+				last: `
+Drivers:
+- CarIdx: 1
+  UserName: A
+`,
+			},
+			false,
+		},
+		{
+			"driver name change",
+			args{
+				current: `
+Drivers:
+- CarIdx: 1
+  UserName: A
+`,
+				last: `
+Drivers:
+- CarIdx: 1
+  UserName: B
+`,
+			},
+			true,
+		},
+		{
+			"same size, additional driver",
+			args{
+				current: `
+Drivers:
+- CarIdx: 1
+  UserName: A
+`,
+				last: `
+Drivers:
+- CarIdx: 2
+  UserName: B
+`,
+			},
+			true,
+		},
+		{
+			"additional entry",
+			args{
+				current: `
+Drivers:
+- CarIdx: 1
+  UserName: A
+- CarIdx: 2
+  UserName: B  
+`,
+				last: `
+Drivers:
+- CarIdx: 1
+  UserName: A
+
+`,
+			},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		var current, last iryaml.DriverInfo
+		var err error
+		t.Run(tt.name, func(t *testing.T) {
+			err = yaml.Unmarshal([]byte(tt.args.current), &current)
+			if err != nil {
+				t.Errorf("Error unmarshalling current yaml: %v", err)
+			}
+			err = yaml.Unmarshal([]byte(tt.args.last), &last)
+			if err != nil {
+				t.Errorf("Error unmarshalling last yaml: %v", err)
+			}
+			if got := HasDriverChange(&current, &last); got != tt.want {
+				t.Errorf("HasDriverChange() = %v, want %v", got, tt.want)
 			}
 		})
 	}
