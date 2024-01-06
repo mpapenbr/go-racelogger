@@ -23,7 +23,8 @@ type Options struct {
 	StatePublishInterval    time.Duration
 	SpeedmapPublishInterval time.Duration
 	CarDataPublishInterval  time.Duration
-	ChunkSize               int // speedmap chunk size
+	ChunkSize               int     // speedmap chunk size
+	SpeedmapSpeedThreshold  float64 // speedmap speed threshold
 	GlobalProcessingData    *GlobalProcessingData
 	RecordingDoneChannel    chan struct{}
 }
@@ -48,6 +49,12 @@ func WithStatePublishInterval(d time.Duration) OptionsFunc {
 func WithSpeedmapPublishInterval(d time.Duration) OptionsFunc {
 	return func(o *Options) {
 		o.SpeedmapPublishInterval = d
+	}
+}
+
+func WithSpeedmapSpeedThreshold(f float64) OptionsFunc {
+	return func(o *Options) {
+		o.SpeedmapSpeedThreshold = f
 	}
 }
 
@@ -106,7 +113,7 @@ func NewProcessor(
 	for _, o := range options {
 		o(opts)
 	}
-
+	SetSpeedmapSpeedThreshold(opts.SpeedmapSpeedThreshold)
 	pitBoundaryProc := NewPitBoundaryProc()
 	carDriverProc := NewCarDriverProc(api, cardataOutput)
 	messageProc := NewMessageProc(carDriverProc)

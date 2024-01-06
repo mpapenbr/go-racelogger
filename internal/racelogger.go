@@ -27,10 +27,12 @@ import (
 type (
 	EventKeyFunc func(*yaml.IrsdkYaml) string
 	Config       struct {
-		ctx                context.Context
-		cancel             context.CancelFunc
-		eventKeyFunc       EventKeyFunc
-		waitForDataTimeout time.Duration
+		ctx                     context.Context
+		cancel                  context.CancelFunc
+		eventKeyFunc            EventKeyFunc
+		waitForDataTimeout      time.Duration
+		speedmapPublishInterval time.Duration
+		speedmapSpeedThreshold  float64
 	}
 )
 type ConfigFunc func(cfg *Config)
@@ -47,8 +49,10 @@ type Racelogger struct {
 
 func defaultConfig() *Config {
 	return &Config{
-		eventKeyFunc:       defaultEventKeyFunc,
-		waitForDataTimeout: 1 * time.Second,
+		eventKeyFunc:            defaultEventKeyFunc,
+		waitForDataTimeout:      1 * time.Second,
+		speedmapPublishInterval: 30 * time.Second,
+		speedmapSpeedThreshold:  0.5,
 	}
 }
 
@@ -71,6 +75,14 @@ func WithContext(ctx context.Context, cancelFunc context.CancelFunc) ConfigFunc 
 
 func WithWaitForDataTimeout(t time.Duration) ConfigFunc {
 	return func(cfg *Config) { cfg.waitForDataTimeout = t }
+}
+
+func WithSpeedmapPublishInterval(t time.Duration) ConfigFunc {
+	return func(cfg *Config) { cfg.speedmapPublishInterval = t }
+}
+
+func WithSpeedmapSpeedThreshold(f float64) ConfigFunc {
+	return func(cfg *Config) { cfg.speedmapSpeedThreshold = f }
 }
 
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
@@ -312,6 +324,7 @@ func (r *Racelogger) setupMainLoop() {
 	extraInfoChannel := make(chan model.ExtraInfo, 1)
 
 	recordingDoneChannel := make(chan struct{}, 1)
+
 	proc := processor.NewProcessor(
 		r.api,
 		stateChannel,
@@ -321,6 +334,8 @@ func (r *Racelogger) setupMainLoop() {
 		processor.WithGlobalProcessingData(&r.globalData),
 		processor.WithChunkSize(10),
 		processor.WithRecordingDoneChannel(recordingDoneChannel),
+		processor.WithSpeedmapPublishInterval(r.config.speedmapPublishInterval),
+		processor.WithSpeedmapSpeedThreshold(r.config.speedmapSpeedThreshold),
 	)
 
 	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)
