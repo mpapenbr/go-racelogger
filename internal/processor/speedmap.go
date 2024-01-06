@@ -22,7 +22,12 @@ type ChunkData struct {
 	history     []float64
 	keepHistory int
 	minHist     int
+	ltSum       float64 // long term sum of recorded speeds
+	ltCount     int     // long term count of recorded speeds
+	ltAvg       float64 // long term average of recorded speeds
 }
+
+var speedThresholdPct float64 = 0.5
 
 func newChunkData(id, keepHistory, minHist int) *ChunkData {
 	return &ChunkData{
@@ -36,9 +41,17 @@ func newChunkData(id, keepHistory, minHist int) *ChunkData {
 func (p *ChunkData) update(speed float64) {
 	if len(p.history) < p.keepHistory {
 		p.history = append(p.history, speed)
+		p.ltSum += speed
+		p.ltCount++
 		p.compute()
 		return
 	}
+	// do not record speeds below the threshold
+	if speed < p.ltAvg*speedThresholdPct {
+		return
+	}
+	p.ltSum += speed
+	p.ltCount++
 	p.history = append(p.history, speed)
 	if len(p.history)%2 == 1 {
 		slices.Sort(p.history)
@@ -55,6 +68,7 @@ func (p *ChunkData) compute() {
 		p.avg += v
 	}
 	p.avg /= float64(len(p.history))
+	p.ltAvg = p.ltSum / float64(p.ltCount)
 }
 
 // SpeedmapProc is a struct that contains the logic to process the speedmap data.
@@ -71,9 +85,15 @@ type SpeedmapProc struct {
 	carLookup      map[int][]*ChunkData // car idx -> chunk data
 }
 
+func SetSpeedmapSpeedThreshold(pct float64) {
+	speedThresholdPct = pct
+}
+
 //nolint:whitespace // can't get different linters happy
 func NewSpeedmapProc(
-	api *irsdk.Irsdk, chunkSize int, gpd *GlobalProcessingData,
+	api *irsdk.Irsdk,
+	chunkSize int,
+	gpd *GlobalProcessingData,
 ) *SpeedmapProc {
 	return &SpeedmapProc{
 		api:            api,

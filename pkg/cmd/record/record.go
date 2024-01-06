@@ -21,6 +21,7 @@ var (
 	eventDescription string
 )
 
+//nolint:funlen // ok here
 func NewRecordCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "record",
@@ -63,6 +64,14 @@ func NewRecordCmd() *cobra.Command {
 		"logFormat",
 		"json",
 		"controls the log output format")
+	cmd.Flags().StringVar(&config.SpeedmapPublishInterval,
+		"speedmap-publish-interval",
+		"30s",
+		"publish speedmap data to server using this interval")
+	cmd.Flags().Float64Var(&config.SpeedmapSpeedThreshold,
+		"speedmap-speed-threshold",
+		0.5,
+		"do not record speeds below this threshold pct (0-1.0) to the avg speed of the chunk")
 	return cmd
 }
 
@@ -88,16 +97,22 @@ func recordEvent() error {
 	// stdLogger.Printf("something\n")
 
 	// log.Debug("Starting wamp client")
-	var waitForData time.Duration
+	var waitForData, speedmapPublishInterval time.Duration
 	var err error
 	waitForData, err = time.ParseDuration(config.WaitForData)
 	if err != nil {
 		waitForData = time.Second
 	}
+	speedmapPublishInterval, err = time.ParseDuration(config.SpeedmapPublishInterval)
+	if err != nil {
+		speedmapPublishInterval = 30 * time.Second
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	r := internal.NewRaceLogger(
 		internal.WithContext(ctx, cancel),
 		internal.WithWaitForDataTimeout(waitForData),
+		internal.WithSpeedmapPublishInterval(speedmapPublishInterval),
+		internal.WithSpeedmapSpeedThreshold(config.SpeedmapSpeedThreshold),
 	)
 	defer r.Close()
 	sigChan := make(chan os.Signal, 1)
