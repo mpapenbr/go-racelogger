@@ -43,20 +43,23 @@ func getRaceState(api *irsdk.Irsdk) string {
 	return computeFlagState(state, int64(flags))
 }
 
+func isBitSet(v, bit int64) bool {
+	return v&bit == bit
+}
+
 //nolint:cyclop,gocritic,nestif // ok this way
 func computeFlagState(state int32, flags int64) string {
 	if state == int32(irsdk.StateRacing) {
-		if flags&int64(irsdk.FlagStartHidden) == int64(irsdk.FlagStartHidden) {
+		if isBitSet(flags, int64(irsdk.FlagStartGo)) {
 			return GREEN
-		} else if flags>>16&int64(irsdk.FlagGreen) == int64(irsdk.FlagGreen) {
-			return GREEN
-		} else if flags>>16&int64(irsdk.FlagYello) == int64(irsdk.FlagYello) {
-			return YELLOW
-		} else if flags>>16&int64(irsdk.FlagCheckered) == int64(irsdk.FlagCheckered) {
-			return CHECKERED
-		} else if flags>>16&int64(irsdk.FlagWhite) == int64(irsdk.FlagWhite) {
-			return WHITE
+		} else if isBitSet(flags, int64(irsdk.FlagStartHidden)) {
+			if isBitSet(flags, int64(irsdk.FlagCaution)) ||
+				isBitSet(flags, int64(irsdk.FlagCautionWaving)) {
+
+				return YELLOW
+			}
 		}
+		return GREEN
 	} else if state == int32(irsdk.StateCheckered) {
 		return CHECKERED
 	} else if state == int32(irsdk.StateCoolDown) {
