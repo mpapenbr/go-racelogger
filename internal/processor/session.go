@@ -11,6 +11,8 @@ func SessionManifest() []string {
 		"timeRemain",
 		"lapsRemain",
 		"flagState",
+		"sessionStateRaw",
+		"sessionFlagsRaw",
 		"timeOfDay",
 		"airTemp",
 		"airDensity",
@@ -54,5 +56,8 @@ func (s *SessionProc) CreateOutput() GenericMessage {
 	state, _ := s.api.GetIntValue("SessionState")
 	flags, _ := s.api.GetIntValue("SessionFlags")
 	msg["flagState"] = computeFlagState(state, int64(flags))
+	msg["sessionStateRaw"] = justValue(s.api.GetValue("SessionState"))
+	msg["sessionFlagsRaw"] = justValue(s.api.GetValue("SessionFlags"))
+
 	return msg
 }
