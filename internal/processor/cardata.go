@@ -133,6 +133,7 @@ func (cp *carPit) UpdatePre(cd *CarData, cw *carWorkData) {
 
 	if !cw.pit {
 		cd.state = CarStateRun
+		cd.stintLap = 1
 		cd.setState(&carRun{})
 		return
 	}
