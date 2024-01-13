@@ -72,6 +72,10 @@ func NewRecordCmd() *cobra.Command {
 		"speedmap-speed-threshold",
 		0.5,
 		"do not record speeds below this threshold pct (0-1.0) to the avg speed of the chunk")
+	cmd.Flags().Float64Var(&config.MaxSpeed,
+		"max-speed",
+		500,
+		"do not process computed speed above this value in km/h")
 	return cmd
 }
 
@@ -113,6 +117,7 @@ func recordEvent() error {
 		internal.WithWaitForDataTimeout(waitForData),
 		internal.WithSpeedmapPublishInterval(speedmapPublishInterval),
 		internal.WithSpeedmapSpeedThreshold(config.SpeedmapSpeedThreshold),
+		internal.WithMaxSpeed(config.MaxSpeed),
 	)
 	defer r.Close()
 	sigChan := make(chan os.Signal, 1)

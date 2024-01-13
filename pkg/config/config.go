@@ -10,5 +10,5 @@ var (
 	LogFormat               string  // text vs json
 	SpeedmapPublishInterval string  // duration to publish speedmap data
 	SpeedmapSpeedThreshold  float64 // do not record speed below this threshold pct (0-1.0)
-
+	MaxSpeed                float64 // do not process  speeds above this value (km/h)
 )

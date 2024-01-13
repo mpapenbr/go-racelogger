@@ -25,6 +25,7 @@ type Options struct {
 	CarDataPublishInterval  time.Duration
 	ChunkSize               int     // speedmap chunk size
 	SpeedmapSpeedThreshold  float64 // speedmap speed threshold
+	MaxSpeed                float64 // speeds above this value (km/h) are not processed
 	GlobalProcessingData    *GlobalProcessingData
 	RecordingDoneChannel    chan struct{}
 }
@@ -55,6 +56,12 @@ func WithSpeedmapPublishInterval(d time.Duration) OptionsFunc {
 func WithSpeedmapSpeedThreshold(f float64) OptionsFunc {
 	return func(o *Options) {
 		o.SpeedmapSpeedThreshold = f
+	}
+}
+
+func WithMaxSpeed(f float64) OptionsFunc {
+	return func(o *Options) {
+		o.MaxSpeed = f
 	}
 }
 
@@ -100,7 +107,7 @@ type Processor struct {
 	extraInfoOutput      chan model.ExtraInfo
 }
 
-//nolint:whitespace // can't get different linters happy
+//nolint:whitespace,funlen // can't get different linters happy
 func NewProcessor(
 	api *irsdk.Irsdk,
 	stateOutput chan model.StateData,
@@ -125,7 +132,9 @@ func NewProcessor(
 		carDriverProc,
 		pitBoundaryProc,
 		speedmapProc,
-		messageProc)
+		messageProc,
+		opts.MaxSpeed,
+	)
 	raceProc := NewRaceProc(api,
 		carProc,
 		messageProc,
