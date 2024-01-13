@@ -33,6 +33,7 @@ type (
 		waitForDataTimeout      time.Duration
 		speedmapPublishInterval time.Duration
 		speedmapSpeedThreshold  float64
+		maxSpeed                float64
 	}
 )
 type ConfigFunc func(cfg *Config)
@@ -53,6 +54,7 @@ func defaultConfig() *Config {
 		waitForDataTimeout:      1 * time.Second,
 		speedmapPublishInterval: 30 * time.Second,
 		speedmapSpeedThreshold:  0.5,
+		maxSpeed:                500,
 	}
 }
 
@@ -83,6 +85,10 @@ func WithSpeedmapPublishInterval(t time.Duration) ConfigFunc {
 
 func WithSpeedmapSpeedThreshold(f float64) ConfigFunc {
 	return func(cfg *Config) { cfg.speedmapSpeedThreshold = f }
+}
+
+func WithMaxSpeed(f float64) ConfigFunc {
+	return func(cfg *Config) { cfg.maxSpeed = f }
 }
 
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
@@ -336,6 +342,7 @@ func (r *Racelogger) setupMainLoop() {
 		processor.WithRecordingDoneChannel(recordingDoneChannel),
 		processor.WithSpeedmapPublishInterval(r.config.speedmapPublishInterval),
 		processor.WithSpeedmapSpeedThreshold(r.config.speedmapSpeedThreshold),
+		processor.WithMaxSpeed(r.config.maxSpeed),
 	)
 
 	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)

@@ -38,6 +38,8 @@ type CarProc struct {
 	speedmapProc    *SpeedmapProc
 	messageProc     *MessageProc
 	bestSectionProc *BestSectionProc
+
+	maxSpeed float64
 }
 
 type finishMarker struct {
@@ -119,6 +121,7 @@ func NewCarProc(
 	pitBoundaryProc *PitBoundaryProc,
 	speedmapProc *SpeedmapProc,
 	messageProc *MessageProc,
+	maxSpeed float64,
 ) *CarProc {
 	ret := &CarProc{
 		api:             api,
@@ -127,6 +130,7 @@ func NewCarProc(
 		pitBoundaryProc: pitBoundaryProc,
 		speedmapProc:    speedmapProc,
 		messageProc:     messageProc,
+		maxSpeed:        maxSpeed,
 	}
 
 	ret.init()
@@ -387,7 +391,12 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 			return 0
 		}
 		speed := p.gpd.TrackInfo.Length * moveDist / deltaTime * 3.6
-
+		if speed > p.maxSpeed {
+			log.Warn("Speed above maxSpeed. Ignoring",
+				log.Float64("speed", speed),
+				log.Float64("maxSpeed", p.maxSpeed))
+			return -1
+		}
 		return speed
 	} else {
 		log.Debug("Delta time is 0")
