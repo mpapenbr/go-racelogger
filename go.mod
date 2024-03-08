@@ -1,6 +1,6 @@
 module github.com/mpapenbr/go-racelogger
 
-go 1.21
+go 1.22
 
 require (
 	github.com/gammazero/nexus/v3 v3.2.1
