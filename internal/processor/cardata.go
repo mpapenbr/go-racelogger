@@ -172,13 +172,14 @@ func (co *carOut) UpdatePost(cd *CarData) {}
 
 // contains data extracted from irsdk that needs to be processed by the carState
 type carWorkData struct {
-	carIdx   int32
-	trackPos float64
-	pos      int32
-	pic      int32
-	lap      int32
-	lc       int32
-	pit      bool
+	carIdx       int32
+	trackPos     float64
+	pos          int32
+	pic          int32
+	lap          int32
+	lc           int32
+	pit          bool
+	tireCompound int32
 }
 
 // CarData is a struct that contains the logic to process data for a single car data.
@@ -201,6 +202,7 @@ type CarData struct {
 	speed           float64
 	interval        float64
 	gap             float64
+	tireCompound    int
 	currentState    carState
 	laptiming       *CarLaptiming
 	carDriverProc   *CarDriverProc
@@ -279,6 +281,7 @@ func (cd *CarData) prepareMsgData() {
 			cd.laptiming.sectors[i].duration.marker,
 		}
 	}
+	cd.msgData["tireCompound"] = cd.tireCompound
 
 	cd.msgData["userName"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).UserName
 	cd.msgData["teamName"] = cd.carDriverProc.GetCurrentDriver(cd.carIdx).TeamName
@@ -333,7 +336,12 @@ func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {
 	cw.lap = justValue(api.GetValue("CarIdxLap")).([]int32)[cd.carIdx]
 	cw.lc = justValue(api.GetValue("CarIdxLapCompleted")).([]int32)[cd.carIdx]
 	cw.pit = justValue(api.GetValue("CarIdxOnPitRoad")).([]bool)[cd.carIdx]
-
+	cw.tireCompound = justValue(api.GetValue("CarIdxTireCompound")).([]int32)[cd.carIdx]
+	// maybe put this into the CarStint?
+	// value not unique
+	// when wet race: 0=DRY, 1=WET (EventID 314)
+	// when dry: 0=hard, 1=medium, 2=soft (F1, EventID 315)
+	// when dry: 0=primary, 1=alternate (IR 18, EventId 316)
 	return &cw
 }
 
@@ -343,6 +351,7 @@ func (cd *CarData) copyWorkData(cw *carWorkData) {
 	cd.pic = int(cw.pic)
 	cd.lap = int(cw.lap)
 	cd.lc = int(cw.lc)
+	cd.tireCompound = int(cw.tireCompound)
 	cd.dist = 0
 	cd.interval = 0
 }

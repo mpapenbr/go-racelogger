@@ -20,6 +20,9 @@ func SessionManifest() []string {
 		"trackTemp",
 		"windDir",
 		"windVel",
+		"trackWetness",
+		"weatherDeclaredWet",
+		"precipitation",
 	}
 }
 
@@ -53,6 +56,9 @@ func (s *SessionProc) CreateOutput() GenericMessage {
 	msg["trackTemp"] = justValue(s.api.GetValue("TrackTemp"))
 	msg["windDir"] = justValue(s.api.GetValue("WindDir"))
 	msg["windVel"] = justValue(s.api.GetValue("WindVel"))
+	msg["precipitation"] = justValue(s.api.GetValue("Precipitation"))
+	msg["trackWetness"] = justValue(s.api.GetValue("TrackWetness"))
+	msg["weatherDeclaredWet"] = justValue(s.api.GetValue("WeatherDeclardWet"))
 	state, _ := s.api.GetIntValue("SessionState")
 	flags, _ := s.api.GetIntValue("SessionFlags")
 	msg["flagState"] = computeFlagState(state, int64(flags))

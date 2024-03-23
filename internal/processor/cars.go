@@ -88,6 +88,7 @@ var baseAttributes = []string{
 	"stintLap",
 	"last",
 	"best",
+	"tireCompound",
 }
 
 //nolint:makezero // false positive?
