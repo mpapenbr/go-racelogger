@@ -17,7 +17,7 @@ require (
 	github.com/mpapenbr/iracelog-service-manager-go v0.11.0
 	github.com/samber/lo v1.39.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
-	golang.org/x/mod v0.16.0
+	golang.org/x/mod v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
