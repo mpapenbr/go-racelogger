@@ -3,7 +3,7 @@ module github.com/mpapenbr/go-racelogger
 go 1.22
 
 require (
-	github.com/gammazero/nexus/v3 v3.2.1
+	github.com/gammazero/nexus/v3 v3.2.2
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
@@ -13,11 +13,11 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/mpapenbr/goirsdk v0.5.1
+	github.com/mpapenbr/goirsdk v0.6.0
 	github.com/mpapenbr/iracelog-service-manager-go v0.11.0
 	github.com/samber/lo v1.39.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
-	golang.org/x/mod v0.16.0
+	golang.org/x/mod v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -37,7 +37,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )
 
