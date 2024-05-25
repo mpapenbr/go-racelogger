@@ -7,6 +7,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -40,6 +41,7 @@ type (
 		maxSpeed                float64
 		recordingMode           providerv1.RecordingMode
 		token                   string
+		grpcLogFile             string
 	}
 )
 type ConfigFunc func(cfg *Config)
@@ -52,6 +54,7 @@ type Racelogger struct {
 	simIsRunning bool
 	config       *Config
 	globalData   processor.GlobalProcessingData
+	msgLogger    *os.File
 }
 
 func defaultConfig() *Config {
@@ -110,19 +113,33 @@ func WithToken(token string) ConfigFunc {
 	return func(cfg *Config) { cfg.token = token }
 }
 
+func WithGrpcLogFile(grpcLogFile string) ConfigFunc {
+	return func(cfg *Config) { cfg.grpcLogFile = grpcLogFile }
+}
+
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 	c := defaultConfig()
 	for _, fn := range cfg {
 		fn(c)
 	}
-
+	var grpcMsgLog *os.File = nil
+	if c.grpcLogFile != "" {
+		f, err := os.Create(c.grpcLogFile)
+		if err != nil {
+			log.Warn("Could not create grpc log file", log.ErrorField(err))
+		} else {
+			grpcMsgLog = f
+		}
+	}
 	ret := &Racelogger{
 		simIsRunning: false,
 		dataprovider: grpcDataclient.NewDataProviderClient(
 			grpcDataclient.WithConnection(c.conn),
 			grpcDataclient.WithToken(c.token),
+			grpcDataclient.WithMsgLogFile(grpcMsgLog),
 		),
-		config: c,
+		config:    c,
+		msgLogger: grpcMsgLog,
 	}
 
 	ret.init()
@@ -133,6 +150,9 @@ func (r *Racelogger) Close() {
 	log.Debug("Closing Racelogger")
 	r.api.Close()
 	r.dataprovider.Close()
+	if r.msgLogger != nil {
+		r.msgLogger.Close()
+	}
 }
 
 func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error {

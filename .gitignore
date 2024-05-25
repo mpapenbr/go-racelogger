@@ -8,6 +8,7 @@ bin/**
 coverage/**
 dist/**
 **/*.exe
+*.bin
 # Directories require atleast one file to be tracked by git.
 !tmp/.gitkeep
 !bin/.gitkeep
