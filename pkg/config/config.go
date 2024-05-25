@@ -24,6 +24,7 @@ type CliArgs struct {
 	SpeedmapSpeedThreshold  float64 // do not record speed below this threshold pct (0-1.0)
 	MaxSpeed                float64 // do not process  speeds above this value (km/h)
 	DoNotPersist            bool    // do not persist the recorded data (used for debugging)
+	MsgLogFile              string  // write grpc messages to this file
 }
 
 var cliArgs = NewCliArgs()

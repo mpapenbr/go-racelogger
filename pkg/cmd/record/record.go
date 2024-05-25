@@ -75,6 +75,10 @@ func NewRecordCmd() *cobra.Command {
 		"do-not-persist",
 		false,
 		"do not persist the recorded data (used for debugging)")
+	cmd.Flags().StringVar(&config.DefaultCliArgs().MsgLogFile,
+		"msg-log-file",
+		"",
+		"write grpc messages to this file")
 	return cmd
 }
 
@@ -123,6 +127,7 @@ func recordEvent(cfg *config.CliArgs) error {
 		internal.WithMaxSpeed(cfg.MaxSpeed),
 		internal.WithRecordingMode(recordingMode),
 		internal.WithToken(cfg.Token),
+		internal.WithGrpcLogFile(cfg.MsgLogFile),
 	)
 	defer r.Close()
 	sigChan := make(chan os.Signal, 1)

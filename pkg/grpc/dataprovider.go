@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"io"
 
 	providerv1grpc "buf.build/gen/go/mpapenbr/testrepo/grpc/go/testrepo/provider/v1/providerv1grpc"
 	racestatev1grpc "buf.build/gen/go/mpapenbr/testrepo/grpc/go/testrepo/racestate/v1/racestatev1grpc"
@@ -14,6 +15,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/mpapenbr/go-racelogger/log"
+	"github.com/mpapenbr/go-racelogger/pkg/grpc/logger"
 )
 
 type DataProviderClient struct {
@@ -21,6 +23,8 @@ type DataProviderClient struct {
 	providerClient providerv1grpc.ProviderServiceClient
 	stateClient    racestatev1grpc.RaceStateServiceClient
 	token          string
+
+	msgLogger *logger.MsgLogger
 }
 
 type Option func(*DataProviderClient)
@@ -47,6 +51,12 @@ func WithToken(token string) Option {
 	}
 }
 
+func WithMsgLogFile(writer io.Writer) Option {
+	return func(dpc *DataProviderClient) {
+		dpc.msgLogger = logger.NewMsgLogger(logger.WithWriter(writer))
+	}
+}
+
 func (dpc *DataProviderClient) Close() {
 	dpc.conn.Close()
 }
@@ -60,6 +70,8 @@ func (dpc *DataProviderClient) RegisterProvider(
 	req := providerv1.RegisterEventRequest{
 		Event: event, Track: track, Key: event.Key, RecordingMode: recordingMode,
 	}
+	//nolint:errcheck // by design
+	dpc.msgLogger.Log(req.ProtoReflect())
 	_, err := dpc.providerClient.RegisterEvent(
 		dpc.prepareContext(context.Background()), &req)
 	return err
@@ -76,15 +88,14 @@ func (dpc *DataProviderClient) UnregisterProvider(eventKey string) error {
 			Key: eventKey,
 		}},
 	}
+	//nolint:errcheck // by design
+	dpc.msgLogger.Log(req.ProtoReflect())
 	_, err := dpc.providerClient.UnregisterEvent(
 		dpc.prepareContext(context.Background()), &req)
 	return err
 }
 
-// receives data via channel and publishes it on the
-// racelog.public.live.state.<eventKey> topic
-//
-//nolint:gocritic,whitespace // by design
+//nolint:whitespace // by design
 func (dpc *DataProviderClient) PublishStateFromChannel(
 	eventKey string,
 	rcv chan *racestatev1.PublishStateRequest,
@@ -93,6 +104,8 @@ func (dpc *DataProviderClient) PublishStateFromChannel(
 		for {
 			s, more := <-rcv
 			if s != nil {
+				//nolint:errcheck // by design
+				dpc.msgLogger.Log(s.ProtoReflect())
 				_, err := dpc.stateClient.PublishState(
 					dpc.prepareContext(context.Background()), s)
 				if err != nil {
@@ -100,9 +113,6 @@ func (dpc *DataProviderClient) PublishStateFromChannel(
 				}
 			}
 
-			// log.Debug("Ignoring state data", log.String("eventKey", eventKey))
-			// fmt.Printf("chanValue: %v more: %v\n", s.Timestamp, more)
-			// time.Sleep(100 * time.Millisecond)
 			if !more {
 				log.Debug("closed channel signaled")
 				return
@@ -111,7 +121,7 @@ func (dpc *DataProviderClient) PublishStateFromChannel(
 	}()
 }
 
-//nolint:gocritic,whitespace // by design
+//nolint:whitespace // by design
 func (dpc *DataProviderClient) PublishCarDataFromChannel(
 	eventKey string,
 	rcv chan *racestatev1.PublishDriverDataRequest,
@@ -121,14 +131,15 @@ func (dpc *DataProviderClient) PublishCarDataFromChannel(
 			s, more := <-rcv
 
 			if s != nil {
+				//nolint:errcheck // by design
+				dpc.msgLogger.Log(s.ProtoReflect())
 				_, err := dpc.stateClient.PublishDriverData(
 					dpc.prepareContext(context.Background()), s)
 				if err != nil {
 					log.Error("Error publishing driver data", log.ErrorField(err))
 				}
 			}
-			// fmt.Printf("chanValue: %v more: %v\n", s.Timestamp, more)
-			// time.Sleep(100 * time.Millisecond)
+
 			if !more {
 				log.Debug("closed channel signaled")
 				return
@@ -137,7 +148,7 @@ func (dpc *DataProviderClient) PublishCarDataFromChannel(
 	}()
 }
 
-//nolint:gocritic,whitespace // by design
+//nolint:whitespace // by design
 func (dpc *DataProviderClient) PublishSpeedmapDataFromChannel(
 	eventKey string,
 	rcv chan *racestatev1.PublishSpeedmapRequest,
@@ -147,6 +158,8 @@ func (dpc *DataProviderClient) PublishSpeedmapDataFromChannel(
 			s, more := <-rcv
 
 			if s != nil {
+				//nolint:errcheck // by design
+				dpc.msgLogger.Log(s.ProtoReflect())
 				_, err := dpc.stateClient.PublishSpeedmap(
 					dpc.prepareContext(context.Background()), s)
 				if err != nil {
@@ -154,8 +167,6 @@ func (dpc *DataProviderClient) PublishSpeedmapDataFromChannel(
 				}
 			}
 
-			// fmt.Printf("chanValue: %v more: %v\n", s.Timestamp, more)
-			// time.Sleep(100 * time.Millisecond)
 			if !more {
 				log.Debug("closed channel signaled")
 				return
@@ -164,7 +175,7 @@ func (dpc *DataProviderClient) PublishSpeedmapDataFromChannel(
 	}()
 }
 
-//nolint:gocritic,whitespace // by design
+//nolint:whitespace // by design
 func (dpc *DataProviderClient) SendExtraInfoFromChannel(
 	eventKey string,
 	rcv chan *racestatev1.PublishEventExtraInfoRequest,
@@ -173,14 +184,15 @@ func (dpc *DataProviderClient) SendExtraInfoFromChannel(
 		for {
 			extra, more := <-rcv
 			if extra != nil {
+				//nolint:errcheck // by design
+				dpc.msgLogger.Log(extra.ProtoReflect())
 				_, err := dpc.stateClient.PublishEventExtraInfo(
 					dpc.prepareContext(context.Background()), extra)
 				if err != nil {
 					log.Error("Error publishing extra info", log.ErrorField(err))
 				}
 			}
-			// fmt.Printf("chanValue: %v more: %v\n", s.Timestamp, more)
-			// time.Sleep(100 * time.Millisecond)
+
 			if !more {
 				log.Debug("closed channel signaled")
 				return

@@ -7,7 +7,7 @@
 [![Dependencies Status](https://img.shields.io/badge/Dependencies-Up%20to%20Date-brightgreen?style=for-the-badge&logo=dependabot)][dependabot-pulls]
 [![Semantic Versioning](https://img.shields.io/badge/versioning-semantic-black?style=for-the-badge&logo=semver)][github-releases]
 [![License](https://img.shields.io/github/license/mpapenbr/go-racelogger?color=red&style=for-the-badge)][project-license]
-[![Go v1.20](https://img.shields.io/badge/Go-%20v1.20-black?style=for-the-badge&logo=go)][gomod-file]
+[![Go v1.22](https://img.shields.io/badge/Go-%20v1.22-black?style=for-the-badge&logo=go)][gomod-file]
 
 Racelogger for iRacelog project
 
@@ -29,7 +29,6 @@ cd go-racelogger
 ```
 
 </details>
-
 
 <details>
 <summary>
@@ -60,8 +59,6 @@ command
 ```sh
 make install
 ```
-
-
 
 ### Using Code Formatters
 
@@ -188,8 +185,6 @@ goreleaser release
 
 The current `.goreleaser.yml` is target for creating docker images and artefacts to be created by Github actions.
 
-
-
 ### Running `go-racelogger`
 
 To run go-racelogger, use the command
@@ -291,11 +286,9 @@ The remaining labels can be created as needed!
 [github-actions]: ../../actions
 [github-releases]: ../../releases
 [precommit-config]: ./.pre-commit-config.yaml
-
 [gomod-file]: ../main/go.mod
 [github-actions-tests]: ../../actions/workflows/tests.yml
 [dependabot-pulls]: ../../pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Aapp%2Fdependabot
-
 [semver-link]: https://semver.org
 [pre-commit]: https://pre-commit.com
 [github-repo]: https://github.com/new
