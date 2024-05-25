@@ -1,14 +1,37 @@
 package config
 
 var (
-	URL                     string  // URL of WAMP server
-	Realm                   string  // Realm for the racelog endpoints
-	Password                string  // Password for Dataprovider access
-	WaitForServices         string  // duration to wait for other services to be ready
-	WaitForData             string  // duration to wait for data to be available
+	URL      string // Deprecated: URL of WAMP server
+	Realm    string // Deprecated: Realm for the racelog endpoints
+	Password string // Deprecated: Password for Dataprovider access
+
+	LogLevel  string // sets the log level (zap log level values)
+	LogFormat string // text vs json
+
+)
+
+//nolint:lll // better readability
+type CliArgs struct {
+	Addr                    string  // ism gRPC address
+	Insecure                bool    // connect to gRPC server without TLS
 	LogLevel                string  // sets the log level (zap log level values)
 	LogFormat               string  // text vs json
+	LogFile                 string  // log file to write to
+	Token                   string  // token for authentication
+	WaitForServices         string  // duration to wait for other services to be ready
+	WaitForData             string  // duration to wait for data to be available
 	SpeedmapPublishInterval string  // duration to publish speedmap data
 	SpeedmapSpeedThreshold  float64 // do not record speed below this threshold pct (0-1.0)
 	MaxSpeed                float64 // do not process  speeds above this value (km/h)
-)
+	DoNotPersist            bool    // do not persist the recorded data (used for debugging)
+}
+
+var cliArgs = NewCliArgs()
+
+func DefaultCliArgs() *CliArgs {
+	return cliArgs
+}
+
+func NewCliArgs() *CliArgs {
+	return &CliArgs{}
+}

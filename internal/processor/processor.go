@@ -3,9 +3,13 @@ package processor
 import (
 	"time"
 
+	commonv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/common/v1"
+	eventv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/event/v1"
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
+	trackv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/track/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	iryaml "github.com/mpapenbr/goirsdk/yaml"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 
 	"github.com/mpapenbr/go-racelogger/log"
@@ -14,8 +18,8 @@ import (
 type (
 	GenericMessage       map[string]interface{}
 	GlobalProcessingData struct {
-		TrackInfo     model.TrackInfo
-		EventDataInfo model.EventDataInfo
+		TrackInfo     *trackv1.Track
+		EventDataInfo *eventv1.Event
 	}
 )
 
@@ -102,18 +106,18 @@ type Processor struct {
 	messageProc          *MessageProc
 	pitBoundaryProc      *PitBoundaryProc
 	lastDriverInfo       iryaml.DriverInfo
-	stateOutput          chan model.StateData
-	speedmapOutput       chan model.SpeedmapData
-	extraInfoOutput      chan model.ExtraInfo
+	stateOutput          chan *racestatev1.PublishStateRequest
+	speedmapOutput       chan *racestatev1.PublishSpeedmapRequest
+	extraInfoOutput      chan *racestatev1.PublishEventExtraInfoRequest
 }
 
 //nolint:whitespace,funlen // can't get different linters happy
 func NewProcessor(
 	api *irsdk.Irsdk,
-	stateOutput chan model.StateData,
-	speedmapOutput chan model.SpeedmapData,
-	cardataOutput chan model.CarData,
-	extraInfoOutput chan model.ExtraInfo,
+	stateOutput chan *racestatev1.PublishStateRequest,
+	speedmapOutput chan *racestatev1.PublishSpeedmapRequest,
+	cardataOutput chan *racestatev1.PublishDriverDataRequest,
+	extraInfoOutput chan *racestatev1.PublishEventExtraInfoRequest,
 	options ...OptionsFunc,
 ) *Processor {
 	opts := defaultOptions()
@@ -122,7 +126,7 @@ func NewProcessor(
 	}
 	SetSpeedmapSpeedThreshold(opts.SpeedmapSpeedThreshold)
 	pitBoundaryProc := NewPitBoundaryProc()
-	carDriverProc := NewCarDriverProc(api, cardataOutput)
+	carDriverProc := NewCarDriverProc(api, cardataOutput, opts.GlobalProcessingData)
 	messageProc := NewMessageProc(carDriverProc)
 	carDriverProc.SetReportChangeFunc(messageProc.DriverEnteredCar)
 	speedmapProc := NewSpeedmapProc(api, opts.ChunkSize, opts.GlobalProcessingData)
@@ -140,19 +144,20 @@ func NewProcessor(
 		messageProc,
 		nil)
 	ret := Processor{
-		api:               api,
-		options:           opts,
-		lastTimeSendState: time.Time{},
-		stateOutput:       stateOutput,
-		speedmapOutput:    speedmapOutput,
-		extraInfoOutput:   extraInfoOutput,
-		messageProc:       messageProc,
-		carProc:           carProc,
-		raceProc:          raceProc,
-		sessionProc:       SessionProc{api: api},
-		speedmapProc:      speedmapProc,
-		carDriverProc:     carDriverProc,
-		pitBoundaryProc:   pitBoundaryProc,
+		api:                  api,
+		options:              opts,
+		lastTimeSendState:    time.Time{},
+		lastTimeSendSpeedmap: time.Time{}.Add(opts.SpeedmapPublishInterval),
+		stateOutput:          stateOutput,
+		speedmapOutput:       speedmapOutput,
+		extraInfoOutput:      extraInfoOutput,
+		messageProc:          messageProc,
+		carProc:              carProc,
+		raceProc:             raceProc,
+		sessionProc:          SessionProc{api: api},
+		speedmapProc:         speedmapProc,
+		carDriverProc:        carDriverProc,
+		pitBoundaryProc:      pitBoundaryProc,
 	}
 	ret.init()
 	return &ret
@@ -165,21 +170,33 @@ func (p *Processor) init() {
 		// if enough data was collected, send it to server
 		if p.pitBoundaryProc.pitEntry.computed && p.pitBoundaryProc.pitExit.computed {
 			log.Info("Pit entry and exit computed during session, sending to server")
-			pitLaneLength := func(entry, exit float64) float64 {
+			pitLaneLength := func(entry, exit float32) float32 {
 				if exit > entry {
 					return (exit - entry) * p.options.GlobalProcessingData.TrackInfo.Length
 				} else {
 					return (1.0 - entry + exit) * p.options.GlobalProcessingData.TrackInfo.Length
 				}
 			}
-			pitInfo := model.PitInfo{
-				Entry: p.pitBoundaryProc.pitEntry.middle,
-				Exit:  p.pitBoundaryProc.pitExit.middle,
+			pitInfo := trackv1.PitInfo{
+				Entry: float32(p.pitBoundaryProc.pitEntry.middle),
+				Exit:  float32(p.pitBoundaryProc.pitExit.middle),
 				LaneLength: pitLaneLength(
-					p.pitBoundaryProc.pitEntry.middle, p.pitBoundaryProc.pitExit.middle),
+					float32(p.pitBoundaryProc.pitEntry.middle),
+					float32(p.pitBoundaryProc.pitExit.middle)),
 			}
-			p.raceProc.carProc.gpd.TrackInfo.Pit = &pitInfo
-			p.extraInfoOutput <- model.ExtraInfo{Track: p.raceProc.carProc.gpd.TrackInfo}
+			p.raceProc.carProc.gpd.TrackInfo.PitInfo = &pitInfo
+
+			msg := racestatev1.PublishEventExtraInfoRequest{
+				Event: &commonv1.EventSelector{
+					Arg: &commonv1.EventSelector_Key{
+						Key: p.options.GlobalProcessingData.EventDataInfo.Key,
+					},
+				},
+				Timestamp: timestamppb.Now(),
+				ExtraInfo: &racestatev1.ExtraInfo{PitInfo: &pitInfo},
+			}
+
+			p.extraInfoOutput <- &msg
 		}
 		time.Sleep(1 * time.Second) // wait a little to get outstandig messages transmitted
 		if p.options.RecordingDoneChannel != nil {
@@ -219,27 +236,34 @@ func (p *Processor) Process() {
 }
 
 func (p *Processor) sendSpeedmapMessage() {
-	data := model.SpeedmapData{
-		Type:      int(model.MTSpeedmap),
-		Timestamp: float64Timestamp(time.Now()),
-		Payload:   p.speedmapProc.CreatePayload(),
+	msg := racestatev1.PublishSpeedmapRequest{
+		Event: &commonv1.EventSelector{
+			Arg: &commonv1.EventSelector_Key{
+				Key: p.options.GlobalProcessingData.EventDataInfo.Key,
+			},
+		},
+		Speedmap:  p.speedmapProc.CreatePayload(),
+		Timestamp: timestamppb.Now(),
 	}
 
-	p.speedmapOutput <- data
+	p.speedmapOutput <- &msg
 	p.lastTimeSendSpeedmap = time.Now()
 }
 
 func (p *Processor) sendStateMessage() {
-	data := model.StateData{
-		Type:      int(model.MTState),
-		Timestamp: float64Timestamp(time.Now()),
-		Payload: model.StatePayload{
-			Session:  p.sessionProc.CreatePayload(),
-			Cars:     p.carProc.CreatePayload(),
-			Messages: p.messageProc.CreatePayload(),
+	msg := racestatev1.PublishStateRequest{
+		Event: &commonv1.EventSelector{
+			Arg: &commonv1.EventSelector_Key{
+				Key: p.options.GlobalProcessingData.EventDataInfo.Key,
+			},
 		},
+		Cars:      p.carProc.CreatePayload(),
+		Session:   p.sessionProc.CreatePayload(),
+		Messages:  p.messageProc.CreatePayload(),
+		Timestamp: timestamppb.Now(),
 	}
-	p.stateOutput <- data
+
+	p.stateOutput <- &msg
 	p.lastTimeSendState = time.Now()
 	p.messageProc.Clear()
 }

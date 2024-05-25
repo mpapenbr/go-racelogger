@@ -3,6 +3,7 @@ package processor
 import (
 	"fmt"
 
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 
 	"github.com/mpapenbr/go-racelogger/log"
@@ -255,6 +256,54 @@ func (cd *CarData) setState(s carState) {
 	cd.currentState.Enter(cd)
 }
 
+func (cd *CarData) prepareGrpcData() *racestatev1.Car {
+	convertSectors := func(sectors []*SectionTiming) []*racestatev1.TimeWithMarker {
+		ret := make([]*racestatev1.TimeWithMarker, len(sectors))
+		for i, s := range sectors {
+			ret[i] = s.duration.toGrpc()
+		}
+		return ret
+	}
+	convertState := func(carState string) racestatev1.CarState {
+		switch carState {
+		case CarStateOut:
+			return racestatev1.CarState_CAR_STATE_OUT
+		case CarStateRun:
+			return racestatev1.CarState_CAR_STATE_RUN
+		case CarStatePit:
+			return racestatev1.CarState_CAR_STATE_PIT
+		case CarStateSlow:
+			return racestatev1.CarState_CAR_STATE_SLOW
+		case CarStateFinish:
+			return racestatev1.CarState_CAR_STATE_FIN
+		}
+		return racestatev1.CarState_CAR_STATE_UNSPECIFIED
+	}
+
+	ret := &racestatev1.Car{
+		CarIdx:       cd.carIdx,
+		Pos:          int32(cd.pos),
+		Pic:          int32(cd.pic),
+		Lap:          int32(cd.lap),
+		Lc:           int32(cd.lc),
+		TrackPos:     float32(cd.trackPos),
+		Pitstops:     uint32(cd.pitstops),
+		StintLap:     uint32(cd.stintLap),
+		Speed:        float32(cd.speed),
+		Dist:         float32(cd.dist),
+		Interval:     float32(cd.interval),
+		Gap:          float32(cd.gap),
+		TireCompound: &racestatev1.TireCompound{RawValue: uint32(cd.tireCompound)},
+		Last:         cd.laptiming.lap.duration.toGrpc(),
+		Best:         cd.bestLap.toGrpc(),
+		Sectors:      convertSectors(cd.laptiming.sectors),
+		State:        convertState(cd.state),
+	}
+
+	return ret
+}
+
+// Deprecated: use prepareGrpcData instead
 func (cd *CarData) prepareMsgData() {
 	cd.msgData["carIdx"] = cd.carIdx
 	cd.msgData["trackPos"] = cd.trackPos

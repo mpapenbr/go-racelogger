@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
 	"golang.org/x/exp/slices"
@@ -149,7 +150,7 @@ func (p *CarProc) init() {
 	}
 
 	// car must move 10cm to be considered valid
-	p.minMoveDistPct = 0.1 / p.gpd.TrackInfo.Length
+	p.minMoveDistPct = 0.1 / float64(p.gpd.TrackInfo.Length)
 	p.carLookup = make(map[int]*CarData)
 
 	p.bestSectionProc = NewBestSectionProc(len(p.gpd.TrackInfo.Sectors),
@@ -277,7 +278,7 @@ func (p *CarProc) carInfo(carIdx int) {
 
 func (p *CarProc) computeTimes(carData *CarData) {
 	i := len(p.gpd.TrackInfo.Sectors) - 1
-	for carData.trackPos < p.gpd.TrackInfo.Sectors[i].SectorStartPct {
+	for carData.trackPos < float64(p.gpd.TrackInfo.Sectors[i].StartPct) {
 		i--
 	}
 	if carData.currentSector == -1 {
@@ -380,9 +381,9 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 			log.Float64("prevTrackPos", prevTrackPos),
 			log.Float64("currentTrackPos", currentTrackPos),
 			log.Float64("dist", moveDist),
-			log.String("prevTrackPos(m)", output(gate(float64(p.prevLapDistPct[carData.carIdx]))*p.gpd.EventDataInfo.TrackLength)),
-			log.String("currentTrackPos(m)", output(carData.trackPos*p.gpd.EventDataInfo.TrackLength)),
-			log.String("dist(m)", output(moveDist*p.gpd.EventDataInfo.TrackLength)),
+			log.String("prevTrackPos(m)", output(gate(float64(p.prevLapDistPct[carData.carIdx]))*float64(p.gpd.TrackInfo.Length))),
+			log.String("currentTrackPos(m)", output(carData.trackPos*float64(p.gpd.TrackInfo.Length))),
+			log.String("dist(m)", output(moveDist*float64(p.gpd.TrackInfo.Length))),
 		)
 		return -1
 	}
@@ -391,7 +392,7 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 		if moveDist < p.minMoveDistPct {
 			return 0
 		}
-		speed := p.gpd.TrackInfo.Length * moveDist / deltaTime * 3.6
+		speed := float64(p.gpd.TrackInfo.Length) * moveDist / deltaTime * 3.6
 		if speed > p.maxSpeed {
 			log.Warn("Speed above maxSpeed. Ignoring",
 				log.Float64("speed", speed),
@@ -429,7 +430,7 @@ func (p *CarProc) calcDelta() {
 			continue
 		}
 
-		car.dist = deltaDistance(currentRaceOrder[i].trackPos, car.trackPos) * p.gpd.TrackInfo.Length
+		car.dist = deltaDistance(currentRaceOrder[i].trackPos, car.trackPos) * float64(p.gpd.TrackInfo.Length)
 		if car.speed <= 0 {
 			car.interval = 999
 		} else {
@@ -615,7 +616,7 @@ func (p *CarProc) CheckeredFlagIssued() {
 	}
 }
 
-func (p *CarProc) CreatePayload() [][]interface{} {
+func (p *CarProc) CreatePayloadWamp() [][]interface{} {
 	cars := p.getInCurrentRaceOrder()
 	payload := make([][]interface{}, len(cars))
 	manifest := CarManifest(p.gpd)
@@ -629,6 +630,15 @@ func (p *CarProc) CreatePayload() [][]interface{} {
 	}
 	for i, c := range cars {
 		payload[i] = createMessage(c)
+	}
+	return payload
+}
+
+func (p *CarProc) CreatePayload() []*racestatev1.Car {
+	cars := p.getInCurrentRaceOrder()
+	payload := make([]*racestatev1.Car, len(cars))
+	for i, c := range cars {
+		payload[i] = c.prepareGrpcData()
 	}
 	return payload
 }

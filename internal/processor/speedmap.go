@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
+	speedmapv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/speedmap/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
@@ -98,7 +98,7 @@ func NewSpeedmapProc(
 	return &SpeedmapProc{
 		api:            api,
 		chunkSize:      chunkSize,
-		numChunks:      int(math.Ceil(gpd.TrackInfo.Length / float64(chunkSize))),
+		numChunks:      int(math.Ceil(float64(gpd.TrackInfo.Length) / float64(chunkSize))),
 		carClassLookup: make(map[int][]*ChunkData),
 		carIdLookup:    make(map[int][]*ChunkData),
 		carLookup:      make(map[int][]*ChunkData),
@@ -155,13 +155,13 @@ func (s *SpeedmapProc) ComputeDeltaTime(
 	// corner case: only one chunk, check distance between cars
 	// (carInFront is ahead of currentCar)
 	if len(chunkData) == 1 {
-		distMeters := (trackPosCarInFront - trackPosCurrentCar) * s.gpd.TrackInfo.Length
+		distMeters := (trackPosCarInFront - trackPosCurrentCar) * float64(s.gpd.TrackInfo.Length)
 		delta := distMeters / chunkData[0].avg * 3.6
 		return delta
 	}
 	// for the first item: calculate the time from trackPosCurrentCar to end of chunk
 	metersToEndOfChunk := float64((idxCurrentCar+1)*s.chunkSize) -
-		(trackPosCurrentCar * s.gpd.TrackInfo.Length)
+		(trackPosCurrentCar * float64(s.gpd.TrackInfo.Length))
 	delta := metersToEndOfChunk / chunkData[0].avg * 3.6
 	totalDelta := delta
 
@@ -173,34 +173,35 @@ func (s *SpeedmapProc) ComputeDeltaTime(
 	}
 
 	// for the last item: calculate the time from start of chunk to trackPosCarInFront
-	metersFromStartOfChunk := trackPosCarInFront*s.gpd.TrackInfo.Length -
+	metersFromStartOfChunk := trackPosCarInFront*float64(s.gpd.TrackInfo.Length) -
 		(float64(idxCarInFront * s.chunkSize))
 	delta = metersFromStartOfChunk / chunkData[len(chunkData)-1].avg * 3.6
 	totalDelta += delta
 	return totalDelta
 }
 
-func (s *SpeedmapProc) CreatePayload() model.SpeedmapPayload {
+func (s *SpeedmapProc) CreatePayload() *speedmapv1.Speedmap {
 	content := s.CreateOutput()
-	ret := model.SpeedmapPayload{
-		ChunkSize:   s.chunkSize,
-		Data:        content,
-		SessionTime: justValue(s.api.GetValue("SessionTime")).(float64),
-		TimeOfDay:   float64(justValue(s.api.GetValue("SessionTimeOfDay")).(float32)),
-		TrackTemp:   float64(justValue(s.api.GetValue("TrackTemp")).(float32)),
-		TrackLength: s.gpd.TrackInfo.Length,
-		CurrentPos:  s.leaderTrackPos,
+	ret := &speedmapv1.Speedmap{
+		ChunkSize:      uint32(s.chunkSize),
+		Data:           content,
+		SessionTime:    float32(readFloat64(s.api, "SessionTime")),
+		TimeOfDay:      uint32(readFloat32(s.api, "SessionTimeOfDay")),
+		TrackTemp:      readFloat32(s.api, "TrackTemp"),
+		LeaderTrackPos: float32(s.leaderTrackPos),
 	}
 	return ret
 }
 
-func (s *SpeedmapProc) CreateOutput() map[string]*model.ClassSpeedmapData {
-	ret := make(map[string]*model.ClassSpeedmapData)
+func (s *SpeedmapProc) CreateOutput() map[string]*speedmapv1.ClassData {
+	ret := make(map[string]*speedmapv1.ClassData)
 	for k, v := range s.carClassLookup {
 		laptime := s.computeLaptime(v)
-		chunkSpeeds := lo.Map(v, func(cd *ChunkData, _ int) float64 { return cd.avg })
-		ret[fmt.Sprintf("%d", k)] = &model.ClassSpeedmapData{
-			Laptime:     laptime,
+		chunkSpeeds := lo.Map(v, func(cd *ChunkData, _ int) float32 {
+			return float32(cd.avg)
+		})
+		ret[fmt.Sprintf("%d", k)] = &speedmapv1.ClassData{
+			Laptime:     float32(laptime),
 			ChunkSpeeds: chunkSpeeds,
 		}
 	}
@@ -233,11 +234,12 @@ func (s *SpeedmapProc) ensureLookup(lookup map[int][]*ChunkData, id int) {
 	}
 }
 
+//nolint:lll //  readability
 func (s *SpeedmapProc) getChunkIdx(trackPos float64) int {
 	if trackPos > 1 {
 		return 0
 	} else {
-		idx := int(math.Floor(trackPos * s.gpd.TrackInfo.Length / float64(s.chunkSize)))
+		idx := int(math.Floor(trackPos * float64(s.gpd.TrackInfo.Length) / float64(s.chunkSize)))
 		if idx >= s.numChunks {
 			return idx - 1
 		}

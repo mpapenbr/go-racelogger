@@ -13,10 +13,12 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/mpapenbr/go-racelogger/pkg/cmd/check"
 	pingCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/ping"
 	recordCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/record"
 	statusCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/status"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
+	"github.com/mpapenbr/go-racelogger/pkg/util"
 	"github.com/mpapenbr/go-racelogger/version"
 )
 
@@ -30,6 +32,9 @@ var rootCmd = &cobra.Command{
 	Short:   "Racelogger for the iRacelog project",
 	Long:    ``,
 	Version: version.FullVersion,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		util.SetupLogger(config.DefaultCliArgs())
+	},
 
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
@@ -44,7 +49,6 @@ func Execute() {
 	}
 }
 
-//nolint:lll // better readability
 func init() {
 	cobra.OnInitialize(initConfig)
 
@@ -55,13 +59,29 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		"config file (default is $HOME/.racelogger.yml)")
 
-	rootCmd.PersistentFlags().StringVar(&config.URL, "url", "", "URL of the backend WAMP server")
-	rootCmd.PersistentFlags().StringVar(&config.Realm, "realm", "racelog", "Realm for racelog endpoints")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().Addr,
+		"addr", "", "Address of the gRPC server")
+	rootCmd.PersistentFlags().BoolVar(&config.DefaultCliArgs().Insecure,
+		"insecure", false,
+		"allow insecure (non-tls) gRPC connections (used for development only)")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().LogLevel,
+		"log-level",
+		"info",
+		"controls the log level (debug, info, warn, error, fatal)")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().LogFormat,
+		"log-format",
+		"text",
+		"controls the log output format (json, text)")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().LogFile,
+		"log-file",
+		"",
+		"if present logs are written to this file, otherwise to stdout")
 
 	// add commands here
 	// e.g. rootCmd.AddCommand(sampleCmd.NewSampleCmd())
 	rootCmd.AddCommand(pingCmd.NewPingCmd())
 	rootCmd.AddCommand(statusCmd.NewStatusCmd())
+	rootCmd.AddCommand(check.NewVersionCheckCmd())
 	rootCmd.AddCommand(recordCmd.NewRecordCmd())
 }
 
@@ -88,6 +108,8 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	} else {
+		fmt.Fprintf(os.Stderr, "Could not read config file: %v\n", err)
 	}
 
 	bindFlags(rootCmd, viper.GetViper())

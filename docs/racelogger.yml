@@ -1,7 +1,13 @@
 # This will be the configuration file for the release process.
 # It can be used a template
 
-# Enter the websocket address of the WAMP router here
-url: wss://crossbar.iracing-tools.de
-# Enter the password of the dataprovider user here
-password:
+# Enter the address of the gRPC server
+addr: grpc.iracing-tools.de:443
+# Enter the dataprovider token
+token:
+
+log-level: info
+log-format: json
+# Enter the path to the log file. If not set, logs will be written to stdout
+# Existing files will be replaced
+#log-file: racelogger.log

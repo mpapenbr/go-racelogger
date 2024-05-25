@@ -9,8 +9,8 @@ import (
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 )
 
-func WaitForSimulation() bool {
-	timeout, err := time.ParseDuration(config.WaitForServices)
+func WaitForSimulation(cfg *config.CliArgs) bool {
+	timeout, err := time.ParseDuration(cfg.WaitForServices)
 	if err != nil {
 		log.Warn("Invalid duration value. Setting default 60s", log.ErrorField(err))
 		timeout = 60 * time.Second

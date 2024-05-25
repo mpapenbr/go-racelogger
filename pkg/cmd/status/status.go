@@ -26,16 +26,11 @@ func NewStatusCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&config.WaitForServices,
-		"wait",
-		"60s",
-		"Wait for running iRacing Sim")
-
 	return cmd
 }
 
 func checkIracingStatus() error {
-	if util.WaitForSimulation() {
+	if util.WaitForSimulation(config.DefaultCliArgs()) {
 		log.Error(ErrSimulationNotRunning.Error())
 		return nil
 	}

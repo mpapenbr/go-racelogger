@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gammazero/nexus/v3/stdlog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -134,10 +133,6 @@ func ResetDefault(l *Logger) {
 	Panic = std.Panic
 	Fatal = std.Fatal
 	Debug = std.Debug
-}
-
-func StdLogger(l *Logger, lvl Level) (stdlog.StdLog, error) {
-	return zap.NewStdLogAt(l.l, lvl)
 }
 
 var std = New(os.Stderr, InfoLevel, WithCaller(true), AddCallerSkip(1))

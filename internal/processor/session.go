@@ -1,30 +1,9 @@
 package processor
 
 import (
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 )
-
-func SessionManifest() []string {
-	return []string{
-		"sessionNum",
-		"sessionTime",
-		"timeRemain",
-		"lapsRemain",
-		"flagState",
-		"sessionStateRaw",
-		"sessionFlagsRaw",
-		"timeOfDay",
-		"airTemp",
-		"airDensity",
-		"airPressure",
-		"trackTemp",
-		"windDir",
-		"windVel",
-		"trackWetness",
-		"weatherDeclaredWet",
-		"precipitation",
-	}
-}
 
 type SessionProc struct {
 	api *irsdk.Irsdk
@@ -34,36 +13,25 @@ func NewSessionProc(api *irsdk.Irsdk) *SessionProc {
 	return &SessionProc{api: api}
 }
 
-func (s *SessionProc) CreatePayload() []interface{} {
-	content := s.CreateOutput()
-	ret := make([]interface{}, len(SessionManifest()))
-	for idx, key := range SessionManifest() {
-		ret[idx] = content[key]
+//nolint:lll // readibility
+func (s *SessionProc) CreatePayload() *racestatev1.Session {
+	ret := &racestatev1.Session{
+		SessionNum:      readUint32(s.api, "SessionNum"),
+		SessionTime:     float32(readFloat64(s.api, "SessionTime")),
+		TimeRemain:      float32(readFloat64(s.api, "SessionTimeRemain")),
+		LapsRemain:      readInt32(s.api, "SessionLapsRemainEx"),
+		TimeOfDay:       uint32(readFloat32(s.api, "SessionTimeOfDay")),
+		AirTemp:         readFloat32(s.api, "AirTemp"),
+		AirDensity:      readFloat32(s.api, "AirDensity"),
+		AirPressure:     readFloat32(s.api, "AirPressure"),
+		TrackTemp:       readFloat32(s.api, "TrackTemp"),
+		WindDir:         readFloat32(s.api, "WindDir"),
+		WindVel:         readFloat32(s.api, "WindVel"),
+		TrackWetness:    convertTrackWetness(s.api),
+		Precipitation:   readFloat32(s.api, "Precipitation"),
+		FlagState:       computeFlagState(readInt32(s.api, "SessionState"), int64(readUint32(s.api, "SessionFlags"))),
+		SessionStateRaw: readInt32(s.api, "SessionState"),
+		SessionFlagsRaw: readUint32(s.api, "SessionFlags"),
 	}
 	return ret
-}
-
-func (s *SessionProc) CreateOutput() GenericMessage {
-	msg := GenericMessage{}
-	msg["sessionNum"] = justValue(s.api.GetValue("SessionNum"))
-	msg["sessionTime"] = justValue(s.api.GetValue("SessionTime"))
-	msg["timeRemain"] = justValue(s.api.GetValue("SessionTimeRemain"))
-	msg["lapsRemain"] = justValue(s.api.GetValue("SessionLapsRemainEx"))
-	msg["timeOfDay"] = justValue(s.api.GetValue("SessionTimeOfDay"))
-	msg["airTemp"] = justValue(s.api.GetValue("AirTemp"))
-	msg["airDensity"] = justValue(s.api.GetValue("AirDensity"))
-	msg["airPressure"] = justValue(s.api.GetValue("AirPressure"))
-	msg["trackTemp"] = justValue(s.api.GetValue("TrackTemp"))
-	msg["windDir"] = justValue(s.api.GetValue("WindDir"))
-	msg["windVel"] = justValue(s.api.GetValue("WindVel"))
-	msg["precipitation"] = justValue(s.api.GetValue("Precipitation"))
-	msg["trackWetness"] = justValue(s.api.GetValue("TrackWetness"))
-	msg["weatherDeclaredWet"] = justValue(s.api.GetValue("WeatherDeclardWet"))
-	state, _ := s.api.GetIntValue("SessionState")
-	flags, _ := s.api.GetIntValue("SessionFlags")
-	msg["flagState"] = computeFlagState(state, int64(flags))
-	msg["sessionStateRaw"] = justValue(s.api.GetValue("SessionState"))
-	msg["sessionFlagsRaw"] = justValue(s.api.GetValue("SessionFlags"))
-
-	return msg
 }
