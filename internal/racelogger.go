@@ -10,17 +10,20 @@ import (
 	"strings"
 	"time"
 
+	eventv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/event/v1"
+	providerv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/provider/v1"
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
+	trackv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/track/v1"
 	"github.com/google/uuid"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/service"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	goyaml "gopkg.in/yaml.v3"
 
 	"github.com/mpapenbr/go-racelogger/internal/processor"
 	"github.com/mpapenbr/go-racelogger/log"
-	"github.com/mpapenbr/go-racelogger/pkg/config"
-	"github.com/mpapenbr/go-racelogger/pkg/wamp"
+	grpcDataclient "github.com/mpapenbr/go-racelogger/pkg/grpc"
 	"github.com/mpapenbr/go-racelogger/version"
 )
 
@@ -29,11 +32,14 @@ type (
 	Config       struct {
 		ctx                     context.Context
 		cancel                  context.CancelFunc
+		conn                    *grpc.ClientConn
 		eventKeyFunc            EventKeyFunc
 		waitForDataTimeout      time.Duration
 		speedmapPublishInterval time.Duration
 		speedmapSpeedThreshold  float64
 		maxSpeed                float64
+		recordingMode           providerv1.RecordingMode
+		token                   string
 	}
 )
 type ConfigFunc func(cfg *Config)
@@ -42,7 +48,7 @@ type ConfigFunc func(cfg *Config)
 type Racelogger struct {
 	eventKey     string
 	api          *irsdk.Irsdk
-	dataprovider *wamp.DataProviderClient
+	dataprovider *grpcDataclient.DataProviderClient
 	simIsRunning bool
 	config       *Config
 	globalData   processor.GlobalProcessingData
@@ -55,6 +61,7 @@ func defaultConfig() *Config {
 		speedmapPublishInterval: 30 * time.Second,
 		speedmapSpeedThreshold:  0.5,
 		maxSpeed:                500,
+		recordingMode:           providerv1.RecordingMode_RECORDING_MODE_PERSIST,
 	}
 }
 
@@ -69,6 +76,10 @@ func defaultEventKeyFunc(irYaml *yaml.IrsdkYaml) string {
 	h.Write(out)
 	ret := hex.EncodeToString(h.Sum(nil))
 	return ret
+}
+
+func WithGrpcConn(conn *grpc.ClientConn) ConfigFunc {
+	return func(cfg *Config) { cfg.conn = conn }
 }
 
 func WithContext(ctx context.Context, cancelFunc context.CancelFunc) ConfigFunc {
@@ -91,15 +102,27 @@ func WithMaxSpeed(f float64) ConfigFunc {
 	return func(cfg *Config) { cfg.maxSpeed = f }
 }
 
+func WithRecordingMode(mode providerv1.RecordingMode) ConfigFunc {
+	return func(cfg *Config) { cfg.recordingMode = mode }
+}
+
+func WithToken(token string) ConfigFunc {
+	return func(cfg *Config) { cfg.token = token }
+}
+
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 	c := defaultConfig()
 	for _, fn := range cfg {
 		fn(c)
 	}
+
 	ret := &Racelogger{
 		simIsRunning: false,
-		dataprovider: wamp.NewDataProviderClient(config.URL, config.Realm, config.Password),
-		config:       c,
+		dataprovider: grpcDataclient.NewDataProviderClient(
+			grpcDataclient.WithConnection(c.conn),
+			grpcDataclient.WithToken(c.token),
+		),
+		config: c,
 	}
 
 	ret.init()
@@ -107,61 +130,43 @@ func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 }
 
 func (r *Racelogger) Close() {
+	log.Debug("Closing Racelogger")
 	r.api.Close()
 	r.dataprovider.Close()
 }
 
 func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error {
-	//nolint:gocritic // keeping it by design
-	// s := r.api.GetYamlString()
-	// os.WriteFile("test.yaml", []byte(s), 0644)
-	// fmt.Printf("Yaml: %v\n", s)
-
 	irYaml, err := r.api.GetYaml()
 	if err != nil {
 		return err
 	}
-	eventInfo, err := r.createEventInfo(irYaml)
-	if err != nil {
-		return err
-	}
+	event := r.createEventInfo(irYaml)
 
-	trackInfo, err := r.createTrackInfo(irYaml)
-	if err != nil {
-		return err
-	}
+	track := r.createTrackInfo(irYaml)
+
 	if eventName != "" {
-		eventInfo.Name = eventName
+		event.Name = eventName
 	} else {
-		eventInfo.Name = fmt.Sprintf("%s %s", eventInfo.TrackDisplayName, eventInfo.EventTime)
+		event.Name = fmt.Sprintf("%s %s",
+			track.Name,
+			event.EventTime.AsTime().Format("20060102-150405"))
 	}
 	if eventDescription != "" {
-		eventInfo.Description = eventDescription
+		event.Description = eventDescription
 	}
 
 	r.eventKey = r.config.eventKeyFunc(irYaml)
+	event.Key = r.eventKey
 	r.globalData = processor.GlobalProcessingData{
-		TrackInfo:     *trackInfo,
-		EventDataInfo: *eventInfo,
+		TrackInfo:     track,
+		EventDataInfo: event,
 	}
 
-	req := service.RegisterEventRequest{
-		EventInfo: *eventInfo,
-		EventKey:  r.eventKey,
-		TrackInfo: *trackInfo,
-		Manifests: model.Manifests{
-			Session: processor.SessionManifest(),
-			Car:     processor.CarManifest(&r.globalData),
-			Message: processor.MessageManifest(),
-			// TODO: remove if go-analysis is available (now: compatibility Javascript routine)
-			Pit: []string{},
-		},
-	}
-	err = r.dataprovider.RegisterProvider(req)
+	err = r.dataprovider.RegisterProvider(event, track, r.config.recordingMode)
 	if err != nil {
 		return err
 	}
-	r.setupDriverChangeDetector(time.Second)
+
 	r.setupMainLoop()
 	return nil
 }
@@ -188,61 +193,55 @@ func (r *Racelogger) init() {
 	log.Debug("Telemetry data is available")
 }
 
-//nolint:whitespace,unparam // can't get different linters happy
-func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) (
-	*model.EventDataInfo,
-	error,
-) {
+func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) *eventv1.Event {
 	pitSpeed, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackPitSpeedLimit)
-	trackLength, _ := processor.GetTrackLengthInMeters(irYaml.WeekendInfo.TrackLength)
-	ret := model.EventDataInfo{
-		TrackId:               irYaml.WeekendInfo.TrackID,
-		TrackDisplayName:      irYaml.WeekendInfo.TrackDisplayName,
-		TrackDisplayShortName: irYaml.WeekendInfo.TrackDisplayShortName,
-		TrackConfigName:       irYaml.WeekendInfo.TrackConfigName,
-		TrackPitSpeed:         pitSpeed,
-		TrackLength:           trackLength,
-		EventTime:             time.Now().Format("20060102-150405"),
-		TeamRacing:            irYaml.WeekendInfo.TeamRacing,
-		MultiClass:            irYaml.WeekendInfo.NumCarClasses > 1,
-		NumCarTypes:           irYaml.WeekendInfo.NumCarTypes,
-		NumCarClasses:         irYaml.WeekendInfo.NumCarClasses,
-		IrSessionId:           irYaml.WeekendInfo.SessionID,
-		Sectors:               r.convertSectors(irYaml.SplitTimeInfo.Sectors),
-		Sessions:              r.convertSessions(irYaml.SessionInfo.Sessions),
-
-		RaceloggerVersion: version.Version, // TODO: verify version setup by build
+	event := eventv1.Event{
+		TrackId:           uint32(irYaml.WeekendInfo.TrackID),
+		MultiClass:        irYaml.WeekendInfo.NumCarClasses > 1,
+		NumCarTypes:       uint32(irYaml.WeekendInfo.NumCarTypes),
+		TeamRacing:        irYaml.WeekendInfo.TeamRacing > 0,
+		IrSessionId:       int32(irYaml.WeekendInfo.SessionID),
+		RaceloggerVersion: version.Version,
+		EventTime:         timestamppb.Now(),
+		Sessions:          r.convertSessions(irYaml.SessionInfo.Sessions),
+		NumCarClasses:     uint32(irYaml.WeekendInfo.NumCarClasses),
+		PitSpeed:          float32(pitSpeed),
 	}
-	return &ret, nil
+	return &event
 }
 
-//nolint:unparam // may be used later
-func (r *Racelogger) createTrackInfo(irYaml *yaml.IrsdkYaml) (*model.TrackInfo, error) {
+func (r *Racelogger) createTrackInfo(irYaml *yaml.IrsdkYaml) *trackv1.Track {
 	trackLength, _ := processor.GetTrackLengthInMeters(irYaml.WeekendInfo.TrackLength)
-	ret := model.TrackInfo{
-		ID:        irYaml.WeekendInfo.TrackID,
+	pitSpeed, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackPitSpeedLimit)
+	ret := trackv1.Track{
+		Id:        &trackv1.TrackId{Id: uint32(irYaml.WeekendInfo.TrackID)},
 		Name:      irYaml.WeekendInfo.TrackDisplayName,
 		ShortName: irYaml.WeekendInfo.TrackDisplayShortName,
 		Config:    irYaml.WeekendInfo.TrackConfigName,
-		Length:    trackLength,
-		Sectors:   r.convertSectors(irYaml.SplitTimeInfo.Sectors),
+		Length:    float32(trackLength),
+		PitSpeed:  float32(pitSpeed),
+
+		Sectors: r.convertSectors(irYaml.SplitTimeInfo.Sectors),
 	}
-	return &ret, nil
+	return &ret
 }
 
-func (r *Racelogger) convertSectors(sectors []yaml.Sectors) []model.Sector {
-	ret := make([]model.Sector, len(sectors))
+func (r *Racelogger) convertSectors(sectors []yaml.Sectors) []*trackv1.Sector {
+	ret := make([]*trackv1.Sector, len(sectors))
 	for i, v := range sectors {
-		ret[i] = model.Sector{SectorNum: v.SectorNum, SectorStartPct: v.SectorStartPct}
+		ret[i] = &trackv1.Sector{
+			Num:      uint32(v.SectorNum),
+			StartPct: float32(v.SectorStartPct),
+		}
 	}
 	return ret
 }
 
 //nolint:gocritic // by design
-func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []model.EventSession {
-	ret := make([]model.EventSession, len(sectors))
+func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []*eventv1.Session {
+	ret := make([]*eventv1.Session, len(sectors))
 	for i, v := range sectors {
-		ret[i] = model.EventSession{Num: v.SessionNum, Name: v.SessionName}
+		ret[i] = &eventv1.Session{Num: uint32(v.SessionNum), Name: v.SessionName}
 	}
 	return ret
 }
@@ -293,41 +292,12 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 	go postData(r.config.ctx)
 }
 
-func (r *Racelogger) setupDriverChangeDetector(interval time.Duration) {
-	lastDriverInfo := yaml.DriverInfo{DriverCarIdx: 12}
-	postData := func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Debug("driverChangeDectector received ctx.Done")
-				return
-			default:
-				if !r.simIsRunning {
-					continue
-				}
-				work := r.api.GetLatestYaml()
-
-				if processor.HasDriverChange(&work.DriverInfo, &lastDriverInfo) {
-					log.Debug("DriverInfo have changed.")
-					lastDriverInfo = work.DriverInfo
-					data := make(map[string]interface{})
-					data["changedDriverInfo"] = work.DriverInfo
-					r.dataprovider.PublishDriverData(r.eventKey, &lastDriverInfo)
-				}
-			}
-			time.Sleep(interval)
-		}
-	}
-
-	go postData(r.config.ctx)
-}
-
 //nolint:gocognit // by design
 func (r *Racelogger) setupMainLoop() {
-	stateChannel := make(chan model.StateData, 2)
-	speedmapChannel := make(chan model.SpeedmapData, 1)
-	carDataChannel := make(chan model.CarData, 1)
-	extraInfoChannel := make(chan model.ExtraInfo, 1)
+	stateChannel := make(chan *racestatev1.PublishStateRequest, 2)
+	speedmapChannel := make(chan *racestatev1.PublishSpeedmapRequest, 1)
+	carDataChannel := make(chan *racestatev1.PublishDriverDataRequest, 1)
+	extraInfoChannel := make(chan *racestatev1.PublishEventExtraInfoRequest, 1)
 
 	recordingDoneChannel := make(chan struct{}, 1)
 

@@ -1,25 +1,35 @@
 package util
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 )
 
-func SetupLogger() *log.Logger {
+func SetupLogger(cfg *config.CliArgs) *log.Logger {
 	var logger *log.Logger
-	switch config.LogFormat {
+	logFile := os.Stdout
+	var err error
+	if cfg.LogFile != "" {
+		logFile, err = os.Create(cfg.LogFile)
+		if err != nil {
+			fmt.Printf("Error creating log file: %s\nLogging to stdout", err)
+			logFile = os.Stdout
+		}
+	}
+	switch cfg.LogFormat {
 	case "json":
 		logger = log.New(
-			os.Stderr,
-			parseLogLevel(config.LogLevel, log.InfoLevel),
+			logFile,
+			parseLogLevel(cfg.LogLevel, log.InfoLevel),
 			log.WithCaller(true),
 			log.AddCallerSkip(1))
 	default:
 		logger = log.DevLogger(
-			os.Stderr,
-			parseLogLevel(config.LogLevel, log.DebugLevel),
+			logFile,
+			parseLogLevel(cfg.LogLevel, log.DebugLevel),
 			log.WithCaller(true),
 			log.AddCallerSkip(1))
 	}

@@ -2,12 +2,15 @@ package processor
 
 import (
 	"reflect"
-	"time"
 
+	carv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/car/v1"
+	commonv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/common/v1"
+	driverv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/driver/v1"
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // CarDriverProc is the main processor for managing driver and team data
@@ -22,16 +25,18 @@ type CarDriverProc struct {
 	teams map[int32][]yaml.Drivers
 	// holds the mapping driverName by carIdx from the latest processing
 	latestDriverNames map[int32]string
-	output            chan model.CarData
+	output            chan *racestatev1.PublishDriverDataRequest
 	reportChangeFunc  func(carIdx int)
+	gpd               *GlobalProcessingData
 }
 
 //nolint:whitespace // can't get different linters happy
 func NewCarDriverProc(
 	api *irsdk.Irsdk,
-	output chan model.CarData,
+	output chan *racestatev1.PublishDriverDataRequest,
+	gpd *GlobalProcessingData,
 ) *CarDriverProc {
-	return newCarDriverProcInternal(api, output)
+	return newCarDriverProcInternal(api, output, gpd)
 }
 
 // use this for testing with custom yaml content
@@ -39,9 +44,10 @@ func NewCarDriverProc(
 //nolint:whitespace // can't get different linters happy
 func newCarDriverProcInternal(
 	api *irsdk.Irsdk,
-	output chan model.CarData,
+	output chan *racestatev1.PublishDriverDataRequest,
+	gpd *GlobalProcessingData,
 ) *CarDriverProc {
-	ret := CarDriverProc{api: api, output: output}
+	ret := CarDriverProc{api: api, output: output, gpd: gpd}
 	ret.init(api.GetLatestYaml())
 	return &ret
 }
@@ -99,7 +105,7 @@ func (d *CarDriverProc) GetCurrentDriver(carIdx int32) yaml.Drivers {
 //
 //nolint:funlen,gocritic,errcheck// keep things together and simple
 func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
-	currentDriverNames := make(map[int]string)
+	currentDriverNames := make(map[uint32]string)
 	for _, v := range y.DriverInfo.Drivers {
 		if !isRealDriver(v) {
 			continue
@@ -123,53 +129,59 @@ func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 			d.latestDriverNames[int32(v.CarIdx)] = v.UserName
 			d.reportChange(int32(v.CarIdx))
 		}
-		currentDriverNames[v.CarIdx] = v.UserName
+		currentDriverNames[uint32(v.CarIdx)] = v.UserName
 	}
 
-	carEntries := []model.CarEntry{}
+	carEntries := make([]*carv1.CarEntry, len(d.lookup))
+	i := 0
 	for k, v := range d.lookup {
-		car := model.Car{
-			CarIdx:       int(k),
+		// x := &carv1.Car{}
+		car := carv1.Car{
+			CarIdx:       uint32(k),
 			CarNumber:    v.CarNumber,
-			CarNumberRaw: v.CarNumberRaw,
-			CarClassID:   v.CarClassID,
-			CarID:        v.CarID,
+			CarNumberRaw: int32(v.CarNumberRaw),
+			CarClassId:   int32(v.CarClassID),
+			CarId:        uint32(v.CarID),
 			Name:         v.CarScreenNameShort,
 		}
-		team := model.Team{
-			ID:     v.TeamID,
+		team := driverv1.Team{
+			Id:     uint32(v.TeamID),
 			Name:   v.TeamName,
-			CarIdx: int(k),
+			CarIdx: uint32(k),
 		}
 
-		drivers := []model.Driver{}
+		drivers := []*driverv1.Driver{}
 		for _, member := range d.teams[k] {
-			drivers = append(drivers, model.Driver{
-				CarIdx:      int(k),
-				ID:          member.UserID,
+			drivers = append(drivers, &driverv1.Driver{
+				CarIdx:      uint32(k),
+				Id:          int32(member.UserID),
 				Name:        member.UserName,
-				IRating:     member.IRating,
+				IRating:     int32(member.IRating),
 				Initials:    member.Initials,
-				LicLevel:    member.LicLevel,
-				LicSubLevel: member.LicSubLevel,
+				LicLevel:    int32(member.LicLevel),
+				LicSubLevel: int32(member.LicSubLevel),
 				LicString:   member.LicString,
 				AbbrevName:  member.AbbrevName,
 			})
 		}
-		entry := model.CarEntry{Car: car, Team: team, Drivers: drivers}
-		carEntries = append(carEntries, entry)
+		entry := carv1.CarEntry{Car: &car, Team: &team, Drivers: drivers}
+		carEntries[i] = &entry
+		i++
 	}
-	sessionTime := justValue(d.api.GetValue("SessionTime"))
-	data := model.CarData{
-		Type:      int(model.MTCar),
-		Timestamp: float64(time.Now().UnixMilli()),
-		Payload: model.CarPayload{
-			Cars:           collectCars(y.DriverInfo.Drivers),
-			CarClasses:     collectCarClasses(y.DriverInfo.Drivers),
-			Entries:        carEntries,
-			CurrentDrivers: currentDriverNames,
-			SessionTime:    sessionTime.(float64),
+	sessionTime := float32(readFloat64(d.api, "SessionTime"))
+	data := racestatev1.PublishDriverDataRequest{
+		Event: &commonv1.EventSelector{
+			Arg: &commonv1.EventSelector_Key{
+				Key: d.gpd.EventDataInfo.Key,
+			},
 		},
+		Timestamp: timestamppb.Now(),
+
+		Cars:           collectCars(y.DriverInfo.Drivers),
+		CarClasses:     collectCarClasses(y.DriverInfo.Drivers),
+		Entries:        carEntries,
+		CurrentDrivers: currentDriverNames,
+		SessionTime:    sessionTime,
 	}
-	d.output <- data
+	d.output <- &data
 }

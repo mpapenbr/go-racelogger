@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"time"
 
+	carv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/car/v1"
+	commonv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/common/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
-	"github.com/mpapenbr/iracelog-service-manager-go/pkg/model"
 	"golang.org/x/exp/slices"
 
 	"github.com/mpapenbr/go-racelogger/log"
@@ -27,11 +27,6 @@ const (
 	CHECKERED = "CHECKERED"
 	WHITE     = "WHITE"
 )
-
-// returns time as unix seconds and microseconds as decimal part
-func float64Timestamp(t time.Time) float64 {
-	return float64(t.Unix()) + (float64(t.UnixMicro()%1e6))/float64(1e6)
-}
 
 func justValue(v any, _ error) any {
 	return v
@@ -146,8 +141,8 @@ func GetTrackLengthInMeters(s string) (float64, error) {
 	}
 }
 
-func carClassesLookup(drivers []yaml.Drivers) map[int]model.CarClass {
-	lookup := make(map[int]model.CarClass)
+func carClassesLookup(drivers []yaml.Drivers) map[int]*carv1.CarClass {
+	lookup := make(map[int]*carv1.CarClass)
 	for _, d := range drivers {
 		if isRealDriver(d) {
 			if _, ok := lookup[d.CarClassID]; !ok {
@@ -155,16 +150,16 @@ func carClassesLookup(drivers []yaml.Drivers) map[int]model.CarClass {
 				if name == "" {
 					name = fmt.Sprintf("CarClass %d", d.CarClassID)
 				}
-				lookup[d.CarClassID] = model.CarClass{ID: d.CarClassID, Name: name}
+				lookup[d.CarClassID] = &carv1.CarClass{Id: uint32(d.CarClassID), Name: name}
 			}
 		}
 	}
 	return lookup
 }
 
-func collectCarClasses(drivers []yaml.Drivers) []model.CarClass {
+func collectCarClasses(drivers []yaml.Drivers) []*carv1.CarClass {
 	lookup := carClassesLookup(drivers)
-	ret := []model.CarClass{}
+	ret := []*carv1.CarClass{}
 	for _, v := range lookup {
 		ret = append(ret, v)
 	}
@@ -178,23 +173,25 @@ func collectCarClasses(drivers []yaml.Drivers) []model.CarClass {
 //   - CarClassDryTireSetLimit is delivered as percent, but it contains the number
 //     of tire sets available
 //   - CarClassMaxFuelPct value is 0.0-1.0
-func collectCars(drivers []yaml.Drivers) []model.CarInfo {
+//
+//nolint:lll // readability
+func collectCars(drivers []yaml.Drivers) []*carv1.CarInfo {
 	classLookup := carClassesLookup(drivers)
-	ret := []model.CarInfo{}
-	carLookup := make(map[int]model.CarInfo)
+	ret := []*carv1.CarInfo{}
+	carLookup := make(map[int]*carv1.CarInfo)
 	for _, d := range drivers {
 		if isRealDriver(d) {
 			if _, ok := carLookup[d.CarID]; !ok {
-				carLookup[d.CarID] = model.CarInfo{
-					CarID:         d.CarID,
-					CarClassID:    d.CarClassID,
+				carLookup[d.CarID] = &carv1.CarInfo{
+					CarId:         uint32(d.CarID),
+					CarClassId:    int32(d.CarClassID),
 					CarClassName:  classLookup[d.CarClassID].Name,
 					Name:          d.CarScreenName,
 					NameShort:     d.CarScreenNameShort,
-					FuelPct:       justValue(GetMetricUnit(d.CarClassMaxFuelPct)).(float64),
-					PowerAdjust:   justValue(GetMetricUnit(d.CarClassPowerAdjust)).(float64),
-					WeightPenalty: justValue(GetMetricUnit(d.CarClassWeightPenalty)).(float64),
-					DryTireSets:   int(justValue(GetMetricUnit(d.CarClassDryTireSetLimit)).(float64)),
+					FuelPct:       float32(justValue(GetMetricUnit(d.CarClassMaxFuelPct)).(float64)),
+					PowerAdjust:   float32(justValue(GetMetricUnit(d.CarClassPowerAdjust)).(float64)),
+					WeightPenalty: float32(justValue(GetMetricUnit(d.CarClassWeightPenalty)).(float64)),
+					DryTireSets:   int32(justValue(GetMetricUnit(d.CarClassDryTireSetLimit)).(float64)),
 				}
 			}
 		}
@@ -233,4 +230,59 @@ func HasDriverChange(current, last *yaml.DriverInfo) bool {
 		}
 	}
 	return changeDetected
+}
+
+func readUint32(api *irsdk.Irsdk, key string) uint32 {
+	val, err := api.GetIntValue(key)
+	if err != nil {
+		log.Error("error reading var", log.String("key", key), log.ErrorField(err))
+	}
+	return uint32(val)
+}
+
+func readInt32(api *irsdk.Irsdk, key string) int32 {
+	val, err := api.GetIntValue(key)
+	if err != nil {
+		log.Error("error reading var", log.String("key", key), log.ErrorField(err))
+	}
+	return val
+}
+
+func readFloat32(api *irsdk.Irsdk, key string) float32 {
+	val, err := api.GetFloatValue(key)
+	if err != nil {
+		log.Error("error reading var", log.String("key", key), log.ErrorField(err))
+	}
+	return val
+}
+
+func readFloat64(api *irsdk.Irsdk, key string) float64 {
+	val, err := api.GetDoubleValue(key)
+	if err != nil {
+		log.Error("error reading var", log.String("key", key), log.ErrorField(err))
+	}
+	return val
+}
+
+func convertTrackWetness(api *irsdk.Irsdk) commonv1.TrackWetness {
+	val, _ := api.GetIntValue("TrackWetness")
+	switch val {
+	case irsdk.TrackWetnessUnknown:
+		return commonv1.TrackWetness_TRACK_WETNESS_UNSPECIFIED
+	case irsdk.TrackWetnessDry:
+		return commonv1.TrackWetness_TRACK_WETNESS_DRY
+	case irsdk.TrackWetnessMostlyDry:
+		return commonv1.TrackWetness_TRACK_WETNESS_MOSTLY_DRY
+	case irsdk.TrackWetnessVeryLightlyWet:
+		return commonv1.TrackWetness_TRACK_WETNESS_VERY_LIGHTLY_WET
+	case irsdk.TrackWetnessLightlyWet:
+		return commonv1.TrackWetness_TRACK_WETNESS_LIGHTLY_WET
+	case irsdk.TrackWetnessModeratelyWet:
+		return commonv1.TrackWetness_TRACK_WETNESS_MODERATELY_WET
+	case irsdk.TrackWetnessVeryWet:
+		return commonv1.TrackWetness_TRACK_WETNESS_VERY_WET
+	case irsdk.TrackWetnessExtremeWet:
+		return commonv1.TrackWetness_TRACK_WETNESS_EXTREMELY_WET
+	}
+	return commonv1.TrackWetness_TRACK_WETNESS_UNSPECIFIED
 }

@@ -1,38 +1,65 @@
 package ping
 
 import (
-	"fmt"
+	"context"
+	"time"
 
+	"buf.build/gen/go/mpapenbr/testrepo/grpc/go/testrepo/provider/v1/providerv1grpc"
+	providerv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/provider/v1"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 	"github.com/mpapenbr/go-racelogger/pkg/util"
-	"github.com/mpapenbr/go-racelogger/pkg/wamp"
+)
+
+var (
+	numPings int
+	delayArg string
 )
 
 func NewPingCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ping",
 		Short: "check connection to backend server",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return pingBackend()
+		Run: func(cmd *cobra.Command, args []string) {
+			pingBackend()
 		},
 	}
-
+	cmd.Flags().IntVarP(&numPings, "num", "n", 10, "number of pings to send")
+	cmd.Flags().StringVarP(&delayArg, "delay", "d", "1s", "time to wait between pings")
 	return cmd
 }
 
-func pingBackend() error {
-	pc := wamp.NewPublicClient(config.URL, config.Realm)
-	defer pc.Close()
-	version, err := pc.GetVersion()
-	if err != nil {
-		log.Error("Could not get remote version", log.ErrorField(err))
-	}
-	versionOk := util.CheckServerVersion(version)
-	fmt.Printf("Server responds with version: %s \n", version)
-	fmt.Printf("Compatible: %t\n", versionOk)
+func pingBackend() {
+	log.Debug("Starting...")
 
-	return nil
+	var conn *grpc.ClientConn
+	var err error
+	var delay time.Duration
+
+	if conn, err = util.ConnectGrpc(config.DefaultCliArgs()); err != nil {
+		log.Error("Could not connect to gRPC server", log.ErrorField(err))
+		return
+	}
+	delay, err = time.ParseDuration(delayArg)
+	if err != nil {
+		delay = time.Second
+	}
+	c := providerv1grpc.NewProviderServiceClient(conn)
+	for i := 1; i < numPings; i++ {
+		log.Debug("pinging server", log.Int("iteration", i))
+		req := providerv1.PingRequest{Num: int32(i)}
+		r, err := c.Ping(context.Background(), &req)
+		if err != nil {
+			log.Error("error pinging server", log.ErrorField(err))
+			return
+		}
+		log.Info("Response",
+			log.Int32("num", r.Num),
+			log.String("time-utc", r.Timestamp.AsTime().Format(time.RFC3339)))
+
+		time.Sleep(delay)
+	}
 }

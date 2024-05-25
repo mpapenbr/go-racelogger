@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
+
 	"github.com/mpapenbr/go-racelogger/log"
 )
 
@@ -37,6 +39,28 @@ func (t *TimeWithMarker) String() string {
 		return formatMsg("personal", t.time)
 	}
 	return ""
+}
+
+func (t *TimeWithMarker) toGrpc() *racestatev1.TimeWithMarker {
+	convert := func(marker string) racestatev1.TimeMarker {
+		switch marker {
+		case MarkerOverallBest:
+			return racestatev1.TimeMarker_TIME_MARKER_OVERALL_BEST
+		case MarkerClassBest:
+			return racestatev1.TimeMarker_TIME_MARKER_CLASS_BEST
+		case MarkerCarBest:
+			return racestatev1.TimeMarker_TIME_MARKER_CAR_BEST
+		case MarkerPersonalBest:
+			return racestatev1.TimeMarker_TIME_MARKER_PERSONAL_BEST
+		case MarkerOldLap:
+			return racestatev1.TimeMarker_TIME_MARKER_OLD_VALUE
+		}
+		return racestatev1.TimeMarker_TIME_MARKER_UNSPECIFIED
+	}
+	return &racestatev1.TimeWithMarker{
+		Time:   float32(t.time),
+		Marker: convert(t.marker),
+	}
 }
 
 type CarLaptiming struct {
