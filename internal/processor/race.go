@@ -21,6 +21,7 @@ type RaceProc struct {
 	cooldownEntered  time.Time
 	carProc          *CarProc
 	messageProc      *MessageProc
+	RaceRunCallback  func()
 	RaceDoneCallback func()
 }
 
@@ -37,6 +38,9 @@ func (ri *RaceInvalid) Update(rp *RaceProc) {
 			rp.messageProc.RaceStarts()
 			rp.carProc.RaceStarts()
 			rp.setState(&RaceRun{})
+			if rp.RaceRunCallback != nil {
+				rp.RaceRunCallback()
+			}
 		}
 	}
 }
