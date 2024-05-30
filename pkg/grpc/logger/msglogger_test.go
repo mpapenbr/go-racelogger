@@ -1,3 +1,4 @@
+//nolint:gocognit,funlen // test
 package logger
 
 import (
@@ -5,13 +6,30 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
+	commonv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/common/v1"
 	providerv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/provider/v1"
+	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-//nolint:gocognit // test
+var eventSel = &commonv1.EventSelector{
+	Arg: &commonv1.EventSelector_Key{Key: "myKey"},
+}
+
+var pubState = racestatev1.PublishStateRequest{
+	Event:     eventSel,
+	Timestamp: timestamppb.New(time.Now()),
+	Cars:      []*racestatev1.Car{},
+	Session: &racestatev1.Session{
+		SessionNum: 1,
+	},
+	Messages: []*racestatev1.Message{},
+}
+
 func TestMsgLogger_Log(t *testing.T) {
 	type args struct {
 		msg []protoreflect.Message
@@ -19,15 +37,20 @@ func TestMsgLogger_Log(t *testing.T) {
 	registerMsg := providerv1.RegisterEventRequest{
 		RecordingMode: providerv1.RecordingMode_RECORDING_MODE_PERSIST,
 	}
-	unregisterMsg := providerv1.UnregisterEventRequest{}
+	unregisterMsg := providerv1.UnregisterEventRequest{
+		EventSelector: eventSel,
+	}
 	tests := []struct {
 		name string
 		args args
 	}{
-		// TODO: Add test cases.
-		{"empty", args{[]protoreflect.Message{
+		{"reg_unreg", args{[]protoreflect.Message{
 			registerMsg.ProtoReflect(),
 			unregisterMsg.ProtoReflect(),
+		}}},
+		{"state", args{[]protoreflect.Message{
+			pubState.ProtoReflect(),
+			pubState.ProtoReflect(),
 		}}},
 	}
 	for _, tt := range tests {

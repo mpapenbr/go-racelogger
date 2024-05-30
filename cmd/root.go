@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/mpapenbr/go-racelogger/pkg/cmd/check"
+	importCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/logimport"
 	pingCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/ping"
 	recordCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/record"
 	statusCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/status"
@@ -57,7 +58,7 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
-		"config file (default is $HOME/.racelogger.yml)")
+		"config file (default is racelogger.yml)")
 
 	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().Addr,
 		"addr", "", "Address of the gRPC server")
@@ -83,6 +84,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd.NewStatusCmd())
 	rootCmd.AddCommand(check.NewVersionCheckCmd())
 	rootCmd.AddCommand(recordCmd.NewRecordCmd())
+	rootCmd.AddCommand(importCmd.NewImportCmd())
 }
 
 // initConfig reads in config file and ENV variables if set.
