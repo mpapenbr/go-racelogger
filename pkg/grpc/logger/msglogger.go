@@ -17,9 +17,11 @@ import (
 
 type (
 	MsgLogger struct {
-		w io.Writer
-		r io.Reader
-		m sync.Mutex
+		w     io.Writer
+		r     io.Reader
+		m     sync.Mutex
+		count int
+		debug bool
 	}
 	Option func(*MsgLogger)
 	header struct {
@@ -61,6 +63,12 @@ func WithReader(r io.Reader) Option {
 	}
 }
 
+func WithDebug(b bool) Option {
+	return func(ml *MsgLogger) {
+		ml.debug = b
+	}
+}
+
 //nolint:govet // false positive
 func (m *MsgLogger) Log(msg protoreflect.Message) error {
 	if m.w == nil {
@@ -76,16 +84,25 @@ func (m *MsgLogger) Log(msg protoreflect.Message) error {
 		m.m.Lock()
 		defer m.m.Unlock()
 		h := header{MsgType: t, MsgLen: uint16(len(b))}
-		if err := binary.Write(m.w, binary.LittleEndian, h); err != nil {
+
+		if err := m.write(m.w, h, b); err != nil {
 			return err
 		}
-		if _, err := m.w.Write(b); err != nil {
-			return err
-		}
+		m.count++
 	} else {
 		return err
 	}
 
+	return nil
+}
+
+func (m *MsgLogger) write(w io.Writer, h header, b []byte) error {
+	if err := binary.Write(w, binary.LittleEndian, h); err != nil {
+		return err
+	}
+	if _, err := w.Write(b); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -105,7 +122,7 @@ func (m *MsgLogger) ReadNext() (protoreflect.Message, error) {
 	}
 
 	b := make([]byte, h.MsgLen)
-	if _, err := m.r.Read(b); err != nil {
+	if _, err := io.ReadFull(m.r, b); err != nil {
 		return nil, err
 	}
 
