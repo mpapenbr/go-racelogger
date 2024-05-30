@@ -109,6 +109,8 @@ type Processor struct {
 	stateOutput          chan *racestatev1.PublishStateRequest
 	speedmapOutput       chan *racestatev1.PublishSpeedmapRequest
 	extraInfoOutput      chan *racestatev1.PublishEventExtraInfoRequest
+	recording            bool
+	racing               bool
 }
 
 //nolint:whitespace,funlen // can't get different linters happy
@@ -147,7 +149,7 @@ func NewProcessor(
 		api:                  api,
 		options:              opts,
 		lastTimeSendState:    time.Time{},
-		lastTimeSendSpeedmap: time.Time{}.Add(opts.SpeedmapPublishInterval),
+		lastTimeSendSpeedmap: time.Now(),
 		stateOutput:          stateOutput,
 		speedmapOutput:       speedmapOutput,
 		extraInfoOutput:      extraInfoOutput,
@@ -158,12 +160,18 @@ func NewProcessor(
 		speedmapProc:         speedmapProc,
 		carDriverProc:        carDriverProc,
 		pitBoundaryProc:      pitBoundaryProc,
+		recording:            true,
+		racing:               false,
 	}
 	ret.init()
 	return &ret
 }
 
 func (p *Processor) init() {
+	p.raceProc.RaceRunCallback = func() {
+		p.racing = true
+		p.lastTimeSendSpeedmap = time.Now().Add(p.options.SpeedmapPublishInterval)
+	}
 	p.raceProc.RaceDoneCallback = func() {
 		p.sendSpeedmapMessage()
 		p.sendStateMessage()
@@ -195,10 +203,11 @@ func (p *Processor) init() {
 				Timestamp: timestamppb.Now(),
 				ExtraInfo: &racestatev1.ExtraInfo{PitInfo: &pitInfo},
 			}
-
 			p.extraInfoOutput <- &msg
 		}
 		time.Sleep(1 * time.Second) // wait a little to get outstandig messages transmitted
+		p.recording = false         // signal recording done
+		p.racing = false            // signal racing done
 		if p.options.RecordingDoneChannel != nil {
 			log.Debug("Signaling recording done")
 			close(p.options.RecordingDoneChannel)
@@ -227,10 +236,15 @@ func (p *Processor) Process() {
 		p.carDriverProc.Process(&freshYaml)
 	}
 
-	if time.Now().After(p.lastTimeSendState.Add(p.options.StatePublishInterval)) {
+	if p.recording &&
+		time.Now().After(p.lastTimeSendState.Add(p.options.StatePublishInterval)) {
+
 		p.sendStateMessage()
 	}
-	if time.Now().After(p.lastTimeSendSpeedmap.Add(p.options.SpeedmapPublishInterval)) {
+
+	if p.recording && p.racing &&
+		time.Now().After(p.lastTimeSendSpeedmap.Add(p.options.SpeedmapPublishInterval)) {
+
 		p.sendSpeedmapMessage()
 	}
 }
