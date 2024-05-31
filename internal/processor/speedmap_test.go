@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	trackv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/track/v1"
+	trackv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/track/v1"
 )
 
 func defaultTestSpeedmapProc() *SpeedmapProc {

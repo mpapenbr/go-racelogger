@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	speedmapv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/speedmap/v1"
+	speedmapv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/speedmap/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"

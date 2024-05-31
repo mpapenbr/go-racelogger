@@ -11,11 +11,12 @@ require (
 )
 
 require (
-	buf.build/gen/go/mpapenbr/testrepo/grpc/go v1.3.0-20240523183733-5b92f15cfcf7.3
-	buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go v1.34.1-20240523183733-5b92f15cfcf7.1
+	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.3.0-20240531140606-7b7655704e96.3
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.1-20240531140606-7b7655704e96.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.6.0
 	github.com/samber/lo v1.39.0
+	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.17.0
 	google.golang.org/grpc v1.64.0
@@ -30,7 +31,6 @@ require (
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
