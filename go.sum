@@ -1,11 +1,8 @@
-buf.build/gen/go/mpapenbr/testrepo/grpc/go v1.3.0-20240523183733-5b92f15cfcf7.3 h1:9JIpCIAk448k7iPGfhrTFX//TYp6+7ylw8oT6xLjNvQ=
-buf.build/gen/go/mpapenbr/testrepo/grpc/go v1.3.0-20240523183733-5b92f15cfcf7.3/go.mod h1:nS+UgKpmgU3eOvFLPyW/PSCfhVci3TGRZ5cFRmof/o0=
-buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go v1.34.0-20240523183733-5b92f15cfcf7.1/go.mod h1:ckOdVOpLqC7n2OAGA29NlgbZZw2XyBEhWAltS1xpCqY=
-buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go v1.34.1-20240523183733-5b92f15cfcf7.1 h1:qQM1J0ZuMSB+oSuTEZOYdam0y+kr31t2SfoYnc6FbtA=
-buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go v1.34.1-20240523183733-5b92f15cfcf7.1/go.mod h1:HxQ3PIxtvhyT+nJ+gvlkc0U8Rm/7LakWTH1NwQyv7UQ=
-buf.build/gen/go/protocolbuffers/wellknowntypes/grpc/go v1.3.0-20240313220449-3186086b2a8e.3/go.mod h1:2qo5pFSOMF9klg1yp5TiphKlFqgSNy783secsN7cSXI=
-buf.build/gen/go/protocolbuffers/wellknowntypes/protocolbuffers/go v1.34.0-20240313220449-3186086b2a8e.1/go.mod h1:XB6Q6aLsF4grHrI1Fft5X5ehSTde5IKPsr4PE96Uq08=
-buf.build/gen/go/protocolbuffers/wellknowntypes/protocolbuffers/go v1.34.1-20240313220449-3186086b2a8e.1/go.mod h1:dqLDqTqSwZ1fKJqQRrWjryyHdhLsRaXc0pQgKa5TJ+E=
+buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.3.0-20240531140606-7b7655704e96.3 h1:1ocoY/qpl2ie2bnBXFLxHrOI5UFtAI0WJuHcBa47lS4=
+buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.3.0-20240531140606-7b7655704e96.3/go.mod h1:B7QCNWPThkM5Lzpt1Gjy9WcF/ShmhjFMPHhFyAuCA6w=
+buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.0-20240531140606-7b7655704e96.1/go.mod h1:A9x9avzwQ0YvgZh6rOMI5zpUJ6a3D9nVVBIssa9+pjs=
+buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.1-20240531140606-7b7655704e96.1 h1:kQWzzYPQDunXx9m7QnCY8LrXgQj8OtIqUvuUg++WhT4=
+buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.1-20240531140606-7b7655704e96.1/go.mod h1:F6oJysEKOA8fIxkEFlsWFbjb8Qst1UkT2mtwMqlcduQ=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
@@ -1462,7 +1459,6 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=

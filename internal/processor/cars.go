@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sort"
 
-	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
+	racestatev1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/racestate/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
 	"golang.org/x/exp/slices"

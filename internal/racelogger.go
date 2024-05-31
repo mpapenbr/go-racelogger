@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	eventv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/event/v1"
-	providerv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/provider/v1"
-	racestatev1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/racestate/v1"
-	trackv1 "buf.build/gen/go/mpapenbr/testrepo/protocolbuffers/go/testrepo/track/v1"
+	eventv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/event/v1"
+	providerv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/provider/v1"
+	racestatev1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/racestate/v1"
+	trackv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/track/v1"
 	"github.com/google/uuid"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
@@ -234,7 +234,7 @@ func (r *Racelogger) createTrackInfo(irYaml *yaml.IrsdkYaml) *trackv1.Track {
 	trackLength, _ := processor.GetTrackLengthInMeters(irYaml.WeekendInfo.TrackLength)
 	pitSpeed, _ := processor.GetMetricUnit(irYaml.WeekendInfo.TrackPitSpeedLimit)
 	ret := trackv1.Track{
-		Id:        &trackv1.TrackId{Id: uint32(irYaml.WeekendInfo.TrackID)},
+		Id:        uint32(irYaml.WeekendInfo.TrackID),
 		Name:      irYaml.WeekendInfo.TrackDisplayName,
 		ShortName: irYaml.WeekendInfo.TrackDisplayShortName,
 		Config:    irYaml.WeekendInfo.TrackConfigName,
