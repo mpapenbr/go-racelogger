@@ -4,8 +4,11 @@ This document describes how to use the racelogger. The developer documentation c
 
 The racelogger provides the following commands.
 
+```console
+racelogger.exe
 ```
-C:\tools\racelogger>racelogger.exe
+
+```
 Racelogger for the iRacelog project
 
 Usage:
@@ -63,9 +66,11 @@ log-format: json
 
 Enter the address of the backend server into the `racelogger.yml` file and perform a version check.
 
-```
+```console
 racelogger.exe check
+```
 
+```
 Racelogger version  : v0.11.1
 Server version      : v0.14.2
 Minimum racelogger  : v0.11.0
