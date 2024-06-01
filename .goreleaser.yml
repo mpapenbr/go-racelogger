@@ -13,7 +13,8 @@ builds:
       - windows
     goarch:
       - amd64
-
+    binary: racelogger
+    id: racelogger
     ignore:
       - goos: darwin
         goarch: "386"
@@ -24,7 +25,7 @@ builds:
 
 archives:
   - name_template: >-
-      {{ .ProjectName }}_
+      racelogger_
       {{- .Version }}_
       {{- .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
@@ -34,7 +35,7 @@ archives:
       - goos: windows
         format: zip
     files:
-      - src: docs/*
+      - src: sample/*
         dst: .
         strip_parent: true
 

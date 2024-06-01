@@ -2,6 +2,7 @@ package check
 
 import (
 	"context"
+	"fmt"
 
 	"buf.build/gen/go/mpapenbr/iracelog/grpc/go/iracelog/provider/v1/providerv1grpc"
 	providerv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/provider/v1"
@@ -43,10 +44,19 @@ func checkCompatibility() {
 	}); err != nil {
 		log.Error("error checking compatibility", log.ErrorField(err))
 	} else {
-		log.Info("Compatibility check successful",
+		log.Debug("Compatibility check successful",
 			log.String("this-racelogger-version", version.Version),
 			log.String("server-version", res.ServerVersion),
 			log.String("minimum-racelogger-version", res.SupportedRaceloggerVersion),
 			log.Bool("compatible", res.RaceloggerCompatible))
+		fmt.Printf(`
+Racelogger version  : v%s
+Server version      : v%s
+Minimum racelogger  : %s
+Compatible          : %t`,
+			version.Version,
+			res.ServerVersion,
+			res.SupportedRaceloggerVersion,
+			res.RaceloggerCompatible)
 	}
 }
