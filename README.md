@@ -1,23 +1,10 @@
 # Racelogger
 
-<div align="center">
-
-[![Build Status](https://img.shields.io/github/checks-status/mpapenbr/go-racelogger/main?color=black&style=for-the-badge&logo=github)][github-actions]
-[![Security: bandit](https://img.shields.io/badge/Security-GoSec-lightgrey?style=for-the-badge&logo=springsecurity)](https://github.com/securego/gosec)
-[![Dependencies Status](https://img.shields.io/badge/Dependencies-Up%20to%20Date-brightgreen?style=for-the-badge&logo=dependabot)][dependabot-pulls]
-[![Semantic Versioning](https://img.shields.io/badge/versioning-semantic-black?style=for-the-badge&logo=semver)][github-releases]
-[![License](https://img.shields.io/github/license/mpapenbr/go-racelogger?color=red&style=for-the-badge)][project-license]
-[![Go v1.22](https://img.shields.io/badge/Go-%20v1.22-black?style=for-the-badge&logo=go)][gomod-file]
-
-Racelogger for iRacelog project
-
-</div>
-
 This document describes how to use the racelogger. The developer documentation can be found [here](./README-dev.md).
 
 The racelogger provides the following commands.
 
-```console
+```
 C:\tools\racelogger>racelogger.exe
 Racelogger for the iRacelog project
 
@@ -48,7 +35,7 @@ Use "racelogger [command] --help" for more information about a command.
 
 Along with the executable comes a configuration file
 
-```json
+```
 # This will be the configuration file for the release process.
 # It can be used a template
 
@@ -72,16 +59,12 @@ log-format: json
 | log-format | json      | Logs are written in JSON format. May also use `text`  |
 | log-file   |           | if present logs are written to this file              |
 
-**Notes:**
-
--
-
 ## Check
 
 Enter the address of the backend server into the `racelogger.yml` file and perform a version check.
 
-```console
-C:\tools\racelogger>racelogger.exe check
+```
+racelogger.exe check
 
 Racelogger version  : v0.11.1
 Server version      : v0.14.2
@@ -95,7 +78,7 @@ Here is an example how to record a race. Ensure the iRacing simulation is runnin
 Let's assume we are connected to a session of the Sebring 12h special event.
 
 ```console
-C:\tools\racelogger>racelogger.exe record -n "Sebring 12h" -d "Split #2"
+racelogger.exe record -n "Sebring 12h" -d "Split #2"
 ```
 
 This will start the recording and send data to the backend server every second. Once the race has finished the programm will stop.
@@ -121,7 +104,7 @@ _Tip:_ Use double quotes (") around values containing blanks and/or other specia
 You may want to log the messages that are sent to server. This may be useful if the connection to the server is lost. You may import the logged messages later.
 
 ```console
-C:\tools\racelogger>racelogger.exe record -n "Sebring 12h" -d "Split #2" --msg-log-file grpc-data.bin
+racelogger.exe record -n "Sebring 12h" -d "Split #2" --msg-log-file grpc-data.bin
 ```
 
 The recorded messages are stored in a binary format in the file `grpc-data.bin`.
@@ -131,7 +114,7 @@ The recorded messages are stored in a binary format in the file `grpc-data.bin`.
 To test the connection to server you may use the ping command. This will send 10 pings to the server with an interval of 1 second between two pings.
 
 ```console
-C:\tools\racelogger>racelogger.exe ping -n 10 -d 1s
+racelogger.exe ping -n 10 -d 1s
 ```
 
 ## Import
@@ -140,5 +123,5 @@ Let's assume the connection to the backend server was lost during recording. Luc
 After the race has finished we want to import the data to the backend. Best practise is to replace the (partial) data on the server with the import file.
 
 ```console
-C:\tools\racelogger>racelogger.exe import --replace-data grpc-data.bin
+racelogger.exe import --replace-data grpc-data.bin
 ```
