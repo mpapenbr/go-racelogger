@@ -54,13 +54,13 @@ log-format: json
 #log-file: racelogger.log
 ```
 
-| Key        | Value     | Info                                                  |
-| ---------- | --------- | ----------------------------------------------------- |
-| addr       | host:port | This is the address of the backend server             |
-| token      |           | A secret credential to identify valid racelogger user |
-| log-level  | info      | The level used for logging                            |
-| log-format | json      | Logs are written in JSON format. May also use `text`  |
-| log-file   |           | if present logs are written to this file              |
+| Key        | Value       | Info                                                  |
+| ---------- | ----------- | ----------------------------------------------------- |
+| addr       | `host:port` | This is the address of the backend server             |
+| token      |             | A secret credential to identify valid racelogger user |
+| log-level  | `info`      | The level used for logging                            |
+| log-format | `json`      | Logs are written in JSON format. May also use `text`  |
+| log-file   |             | if present logs are written to this file              |
 
 ## Check
 
@@ -106,7 +106,7 @@ _Tip:_ Use double quotes (") around values containing blanks and/or other specia
 
 ### Log messages while recording
 
-You may want to log the messages that are sent to server. This may be useful if the connection to the server is lost. You may import the logged messages later.
+You may want to log the messages that are sent to the server. This may be useful if the connection to the server is lost. You may import the logged messages later.
 
 ```console
 racelogger.exe record -n "Sebring 12h" -d "Split #2" --msg-log-file grpc-data.bin
@@ -124,8 +124,10 @@ racelogger.exe ping -n 10 -d 1s
 
 ## Import
 
-Let's assume the connection to the backend server was lost during recording. Luckily we enabled to message logging during recording via the `--msg-log-file grpc-data.bin` option (see above).
-After the race has finished we want to import the data to the backend. Best practise is to replace the (partial) data on the server with the import file.
+Let's assume the connection to the backend server was lost during recording. Luckily we enabled the message logging during recording via the `--msg-log-file grpc-data.bin` option (see above).
+After the race has finished we want to import the data to the backend.
+
+Best practise is to replace the (partial) data on the server with the import file.
 
 ```console
 racelogger.exe import --replace-data grpc-data.bin

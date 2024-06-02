@@ -15,10 +15,12 @@ import (
 )
 
 var (
-	numPings int
-	delayArg string
+	numPings     int
+	delayArg     string
+	ignoreErrors bool
 )
 
+//nolint:lll // readability
 func NewPingCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ping",
@@ -29,6 +31,7 @@ func NewPingCmd() *cobra.Command {
 	}
 	cmd.Flags().IntVarP(&numPings, "num", "n", 10, "number of pings to send")
 	cmd.Flags().StringVarP(&delayArg, "delay", "d", "1s", "time to wait between pings")
+	cmd.Flags().BoolVarP(&ignoreErrors, "ignore", "i", false, "Ignore errors and continue pinging")
 	return cmd
 }
 
@@ -53,12 +56,15 @@ func pingBackend() {
 		req := providerv1.PingRequest{Num: int32(i)}
 		r, err := c.Ping(context.Background(), &req)
 		if err != nil {
-			log.Error("error pinging server", log.ErrorField(err))
-			return
+			log.Error("error pinging server", log.Int("i", i), log.ErrorField(err))
+			if !ignoreErrors {
+				return
+			}
+		} else {
+			log.Info("Response",
+				log.Int32("num", r.Num),
+				log.String("time-utc", r.Timestamp.AsTime().Format(time.RFC3339)))
 		}
-		log.Info("Response",
-			log.Int32("num", r.Num),
-			log.String("time-utc", r.Timestamp.AsTime().Format(time.RFC3339)))
 
 		time.Sleep(delay)
 	}
