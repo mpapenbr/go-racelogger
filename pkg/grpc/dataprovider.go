@@ -111,18 +111,30 @@ func (dpc *DataProviderClient) DeleteEvent(eventKey string) error {
 	return err
 }
 
-//nolint:whitespace // by design
+//nolint:whitespace,nestif,gocognit // by design
 func (dpc *DataProviderClient) PublishStateFromChannel(
 	eventKey string,
 	rcv chan *racestatev1.PublishStateRequest,
 ) {
 	go func() {
+		errorCounter := 0
 		for {
 			s, more := <-rcv
 			if s != nil {
 				err := dpc.PublishState(s)
 				if err != nil {
-					log.Error("Error publishing state data", log.ErrorField(err))
+					if errorCounter%30 == 0 {
+						log.Error("Error publishing state data",
+							log.Int("errorCounter", errorCounter+1),
+							log.ErrorField(err))
+					}
+					errorCounter++
+				} else {
+					if errorCounter > 0 {
+						log.Info("Published state data successful again",
+							log.Int("errorCounter", errorCounter))
+					}
+					errorCounter = 0
 				}
 			}
 			if !more {
