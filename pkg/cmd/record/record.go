@@ -79,13 +79,21 @@ func NewRecordCmd() *cobra.Command {
 		"msg-log-file",
 		"",
 		"write grpc messages to this file")
+	cmd.Flags().BoolVar(&config.DefaultCliArgs().EnsureLiveData,
+		"ensure-live-data",
+		true,
+		"set replay to live data on connection")
+	cmd.Flags().StringVar(&config.DefaultCliArgs().EnsureLiveDataInterval,
+		"ensure-live-data-interval",
+		"0s",
+		"set replay to live mode with this interval (if > 0s)")
 	return cmd
 }
 
-//nolint:funlen,gocritic // by design
+//nolint:funlen,gocritic,cyclop // by design
 func recordEvent(cfg *config.CliArgs) error {
 	log.Debug("Starting...")
-
+	log.Debug("Config", log.Any("cfg", cfg))
 	if ok := util.WaitForSimulation(cfg); !ok {
 		log.Error("Simulation not running")
 		return nil
@@ -102,7 +110,7 @@ func recordEvent(cfg *config.CliArgs) error {
 		return nil
 	}
 
-	var waitForData, speedmapPublishInterval time.Duration
+	var waitForData, speedmapPublishInterval, ensureLiveDataInterval time.Duration
 
 	waitForData, err = time.ParseDuration(cfg.WaitForData)
 	if err != nil {
@@ -111,6 +119,10 @@ func recordEvent(cfg *config.CliArgs) error {
 	speedmapPublishInterval, err = time.ParseDuration(cfg.SpeedmapPublishInterval)
 	if err != nil {
 		speedmapPublishInterval = 30 * time.Second
+	}
+	ensureLiveDataInterval, err = time.ParseDuration(cfg.EnsureLiveDataInterval)
+	if err != nil {
+		ensureLiveDataInterval = 0
 	}
 
 	recordingMode := providerv1.RecordingMode_RECORDING_MODE_PERSIST
@@ -128,6 +140,8 @@ func recordEvent(cfg *config.CliArgs) error {
 		internal.WithRecordingMode(recordingMode),
 		internal.WithToken(cfg.Token),
 		internal.WithGrpcLogFile(cfg.MsgLogFile),
+		internal.WithEnsureLiveData(cfg.EnsureLiveData),
+		internal.WithEnsureLiveDataInterval(ensureLiveDataInterval),
 	)
 	defer r.Close()
 	sigChan := make(chan os.Signal, 1)

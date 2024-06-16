@@ -25,6 +25,8 @@ type CliArgs struct {
 	MaxSpeed                float64 // do not process  speeds above this value (km/h)
 	DoNotPersist            bool    // do not persist the recorded data (used for debugging)
 	MsgLogFile              string  // write grpc messages to this file
+	EnsureLiveData          bool    // if true, replay will be set to live data on connection
+	EnsureLiveDataInterval  string  // interval to set replay mode to live mode
 }
 
 var cliArgs = NewCliArgs()

@@ -42,6 +42,8 @@ type (
 		recordingMode           providerv1.RecordingMode
 		token                   string
 		grpcLogFile             string
+		ensureLiveData          bool
+		ensureLiveDataInterval  time.Duration
 	}
 )
 type ConfigFunc func(cfg *Config)
@@ -65,6 +67,8 @@ func defaultConfig() *Config {
 		speedmapSpeedThreshold:  0.5,
 		maxSpeed:                500,
 		recordingMode:           providerv1.RecordingMode_RECORDING_MODE_PERSIST,
+		ensureLiveData:          true,
+		ensureLiveDataInterval:  0,
 	}
 }
 
@@ -115,6 +119,14 @@ func WithToken(token string) ConfigFunc {
 
 func WithGrpcLogFile(grpcLogFile string) ConfigFunc {
 	return func(cfg *Config) { cfg.grpcLogFile = grpcLogFile }
+}
+
+func WithEnsureLiveData(b bool) ConfigFunc {
+	return func(cfg *Config) { cfg.ensureLiveData = b }
+}
+
+func WithEnsureLiveDataInterval(t time.Duration) ConfigFunc {
+	return func(cfg *Config) { cfg.ensureLiveDataInterval = t }
 }
 
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
@@ -266,9 +278,10 @@ func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []*eventv1.Session
 	return ret
 }
 
-//nolint:gocognit // by design
+//nolint:gocognit,nestif,cyclop // by design
 func (r *Racelogger) setupWatchdog(interval time.Duration) {
 	postData := func(ctx context.Context) {
+		lastForceLiveData := time.Now()
 		for {
 			select {
 			case <-ctx.Done():
@@ -292,8 +305,19 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 							r.api = irsdk.NewIrsdk()
 							r.api.WaitForValidData()
 						}
+						if r.config.ensureLiveData {
+							//nolint:errcheck // by design
+							r.api.ReplaySearch(irsdk.ReplaySearchModeEnd)
+						}
 						r.api.GetData()
 						r.simIsRunning = true
+					} else if r.config.ensureLiveDataInterval > 0 &&
+						time.Since(lastForceLiveData) > r.config.ensureLiveDataInterval {
+
+						log.Debug("Forcing live data")
+						//nolint:errcheck // by design
+						r.api.ReplaySearch(irsdk.ReplaySearchModeEnd)
+						lastForceLiveData = time.Now()
 					}
 				} else {
 					if r.api != nil {
