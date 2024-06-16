@@ -14,7 +14,7 @@ require (
 	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.4.0-20240531140606-7b7655704e96.1
 	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.1-20240531140606-7b7655704e96.1
 	github.com/google/uuid v1.6.0
-	github.com/mpapenbr/goirsdk v0.6.0
+	github.com/mpapenbr/goirsdk v0.6.1
 	github.com/samber/lo v1.39.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
@@ -32,8 +32,8 @@ require (
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 )
 
