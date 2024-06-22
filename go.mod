@@ -3,7 +3,7 @@ module github.com/mpapenbr/go-racelogger
 go 1.22
 
 require (
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
 	go.uber.org/zap v1.27.0
@@ -12,7 +12,7 @@ require (
 
 require (
 	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.4.0-20240531140606-7b7655704e96.1
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.1-20240531140606-7b7655704e96.1
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.2-20240531140606-7b7655704e96.2
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.6.1
 	github.com/samber/lo v1.39.0
@@ -20,7 +20,7 @@ require (
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.18.0
 	google.golang.org/grpc v1.64.0
-	google.golang.org/protobuf v1.34.1
+	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
