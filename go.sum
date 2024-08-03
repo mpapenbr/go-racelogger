@@ -1,5 +1,5 @@
-buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.4.0-20240623151922-fb549bddc8ee.2 h1:cRpTFXqFJXDEv6jPkxIFPLfiEyA53KUUaBkKnCmPKRI=
-buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.4.0-20240623151922-fb549bddc8ee.2/go.mod h1:eBUMtSzFx0mSqGIiRgA3snqRzZWxX1OrbGlT0/T8meY=
+buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20240623151922-fb549bddc8ee.1 h1:lPlhiINx98V6y5AtBdLvqpJuinC8phWAF2dmi8Z9QKs=
+buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20240623151922-fb549bddc8ee.1/go.mod h1:PHNMs6PIYA0TiUfjMeqK1nkfNrUIcA5vCn5VnFYGWEE=
 buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.2-20240623151922-fb549bddc8ee.2 h1:eeJL3v/jqCHRmXwnT3bxrYQegpsAw6cv6RgiTUs44DM=
 buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.2-20240623151922-fb549bddc8ee.2/go.mod h1:Nz+56AmPchS6dX/7Rc7t15BbsL+9eEHWvD0DpdMO7OA=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
