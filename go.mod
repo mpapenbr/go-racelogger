@@ -1,6 +1,8 @@
 module github.com/mpapenbr/go-racelogger
 
-go 1.22
+go 1.23
+
+toolchain go1.23.0
 
 require (
 	github.com/spf13/cobra v1.8.1

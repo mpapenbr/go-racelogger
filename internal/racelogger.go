@@ -414,8 +414,8 @@ func (r *Racelogger) setupMainLoop() {
 }
 
 func logDurations(msg string, durations []time.Duration) {
-	min := 1 * time.Second
-	max := time.Duration(0)
+	minTime := 1 * time.Second
+	maxTime := time.Duration(0)
 	sum := int64(0)
 	avg := time.Duration(0)
 	zeroDurations := 0
@@ -426,11 +426,11 @@ func logDurations(msg string, durations []time.Duration) {
 			continue
 		}
 		validDurations++
-		if v < min {
-			min = v
+		if v < minTime {
+			minTime = v
 		}
-		if v > max {
-			max = v
+		if v > maxTime {
+			maxTime = v
 		}
 		sum += v.Nanoseconds()
 	}
@@ -445,8 +445,8 @@ func logDurations(msg string, durations []time.Duration) {
 	log.Debug(msg,
 		log.Int("zeroDurations", zeroDurations),
 		log.Int("validDurations", validDurations),
-		log.Duration("min", min),
-		log.Duration("max", max),
+		log.Duration("min", minTime),
+		log.Duration("max", maxTime),
 		log.Duration("avg", avg),
 		log.String("durations", strings.Join(durationsStrs, ",")))
 }
