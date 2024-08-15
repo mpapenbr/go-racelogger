@@ -14,6 +14,10 @@ var (
 type CliArgs struct {
 	Addr                    string  // ism gRPC address
 	Insecure                bool    // connect to gRPC server without TLS
+	TLSSkipVerify           bool    // skip TLS verification
+	TLSCert                 string  // path to TLS certificate
+	TLSKey                  string  // path to TLS key
+	TLSCa                   string  // path to TLS CA
 	LogLevel                string  // sets the log level (zap log level values)
 	LogFormat               string  // text vs json
 	LogFile                 string  // log file to write to

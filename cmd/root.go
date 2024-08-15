@@ -50,6 +50,7 @@ func Execute() {
 	}
 }
 
+//nolint:funlen // ok here
 func init() {
 	cobra.OnInitialize(initConfig)
 
@@ -77,6 +78,22 @@ func init() {
 		"log-file",
 		"",
 		"if present logs are written to this file, otherwise to stdout")
+	rootCmd.PersistentFlags().BoolVar(&config.DefaultCliArgs().TLSSkipVerify,
+		"tls-skip-verify",
+		false,
+		"skip verification of server certificate (used for development only)")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().TLSKey,
+		"tls-key",
+		"",
+		"path to TLS key")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().TLSCert,
+		"tls-cert",
+		"",
+		"path to TLS cert")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().TLSCa,
+		"tls-ca",
+		"",
+		"path to TLS root certificate")
 
 	// add commands here
 	// e.g. rootCmd.AddCommand(sampleCmd.NewSampleCmd())
