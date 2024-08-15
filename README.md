@@ -62,6 +62,20 @@ log-format: json
 | log-format | `json`      | Logs are written in JSON format. May also use `text`  |
 | log-file   |             | if present logs are written to this file              |
 
+**Notes about TLS**
+
+In general the backend is running behind a proxy. One job of the proxy is to handle the TLS termination.
+The instances running at iracing-tools.de use a Traefik proxy which is also responsible for providing the Let's encrypt certificates.
+In these cases you don't need to configure any TLS parameters.
+
+In situations where the backend is configured to use additional TLS features you may need to configure the following settings.
+
+| Key      | Info                                 |
+| -------- | ------------------------------------ |
+| tls-ca   | file containing the root certificate |
+| tls-key  | file containing the client key       |
+| tls-cert | file containing the client cert      |
+
 ## Check
 
 Enter the address of the backend server into the `racelogger.yml` file and perform a version check.
