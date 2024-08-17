@@ -13,11 +13,11 @@ require (
 )
 
 require (
-	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20240623151922-fb549bddc8ee.1
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.2-20240623151922-fb549bddc8ee.2
+	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20240815092744-9ff8c9a4483a.1
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.2-20240815092744-9ff8c9a4483a.2
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.6.1
-	github.com/samber/lo v1.46.0
+	github.com/samber/lo v1.47.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.20.0
