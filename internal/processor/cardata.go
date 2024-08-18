@@ -3,7 +3,9 @@ package processor
 import (
 	"fmt"
 
+	commonv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/common/v1"
 	racestatev1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/racestate/v1"
+	trackv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/track/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 
 	"github.com/mpapenbr/go-racelogger/log"
@@ -58,6 +60,7 @@ type carRun struct{}
 
 func (cr *carRun) Enter(cd *CarData) { log.Info("Entering state: carRun") }
 func (cr *carRun) Exit(cd *CarData)  { log.Info("Leaving state: carRun") }
+
 func (cr *carRun) UpdatePre(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
@@ -70,6 +73,7 @@ func (cr *carRun) UpdatePre(cd *CarData, cw *carWorkData) {
 	cd.copyWorkData(cw)
 	if cw.pit {
 		cd.state = CarStatePit
+		handleInlap(cd, cw)
 		cd.pitstops += 1
 		cd.setState(&carPit{})
 		return
@@ -83,10 +87,25 @@ func (cr *carRun) UpdatePost(cd *CarData) {
 	}
 }
 
+func handleInlap(cd *CarData, cw *carWorkData) {
+	// rare case: car just left pit and immediately entered pit again
+	if cd.startOutLap > 0 {
+		cd.inlapTime = cw.sessionTime - cd.startOutLap
+		cd.lapMode = commonv1.LapMode_LAP_MODE_INOUTLAP
+		cd.startOutLap = 0
+		return
+	}
+
+	cd.inlaptiming.lap.markStop(cw.sessionTime)
+	cd.inlapTime = cd.inlaptiming.lap.duration.time
+	cd.lapMode = commonv1.LapMode_LAP_MODE_INLAP
+}
+
 type carSlow struct{}
 
 func (cs *carSlow) Enter(cd *CarData) { log.Info("Entering state: carSlow") }
 func (cs *carSlow) Exit(cd *CarData)  { log.Info("Leaving state: carSlow") }
+
 func (cs *carSlow) UpdatePre(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
 		cd.state = CarStateOut
@@ -99,6 +118,7 @@ func (cs *carSlow) UpdatePre(cd *CarData, cw *carWorkData) {
 	cd.copyWorkData(cw)
 	if cw.pit {
 		cd.state = CarStatePit
+		handleInlap(cd, cw)
 		cd.pitstops += 1
 		cd.setState(&carPit{})
 		return
@@ -135,6 +155,7 @@ func (cp *carPit) UpdatePre(cd *CarData, cw *carWorkData) {
 	if !cw.pit {
 		cd.state = CarStateRun
 		cd.stintLap = 1
+		cd.startOutLap = cw.sessionTime
 		cd.setState(&carRun{})
 		return
 	}
@@ -175,12 +196,14 @@ func (co *carOut) UpdatePost(cd *CarData) {}
 type carWorkData struct {
 	carIdx       int32
 	trackPos     float64
+	trackLoc     int32
 	pos          int32
 	pic          int32
 	lap          int32
 	lc           int32
 	pit          bool
 	tireCompound int32
+	sessionTime  float64
 }
 
 // CarData is a struct that contains the logic to process data for a single car data.
@@ -190,6 +213,7 @@ type CarData struct {
 	msgData         map[string]interface{}
 	state           string
 	trackPos        float64
+	trackLoc        int32
 	bestLap         TimeWithMarker
 	lastLap         TimeWithMarker
 	currentSector   int
@@ -206,9 +230,14 @@ type CarData struct {
 	tireCompound    int
 	currentState    carState
 	laptiming       *CarLaptiming
+	inlaptiming     *CarLaptiming
 	carDriverProc   *CarDriverProc
 	pitBoundaryProc *PitBoundaryProc
 	gpd             *GlobalProcessingData
+	lapMode         commonv1.LapMode
+	startOutLap     float64 // session time when car exited pit road
+	inlapTime       float64 // gets computed on pit entry
+	outlapTime      float64 // gets computed after pit exit on s/f
 }
 
 //nolint:whitespace // can't get different linters happy
@@ -220,6 +249,7 @@ func NewCarData(
 	reportLapStatus ReportTimingStatus,
 ) *CarData {
 	laptiming := NewCarLaptiming(len(gpd.TrackInfo.Sectors), reportLapStatus)
+	inlaptiming := NewCarLaptiming(len(gpd.TrackInfo.Sectors), nil)
 	ret := CarData{
 		carIdx:          carIdx,
 		currentState:    &carInit{},
@@ -227,6 +257,7 @@ func NewCarData(
 		carDriverProc:   carDriverProc,
 		pitBoundaryProc: pitBoundaryProc,
 		laptiming:       laptiming,
+		inlaptiming:     inlaptiming,
 		gpd:             gpd,
 		currentSector:   -1,
 		lastLap:         TimeWithMarker{time: -1, marker: ""},
@@ -256,6 +287,7 @@ func (cd *CarData) setState(s carState) {
 	cd.currentState.Enter(cd)
 }
 
+//nolint:funlen,cyclop // ok here
 func (cd *CarData) prepareGrpcData() *racestatev1.Car {
 	convertSectors := func(sectors []*SectionTiming) []*racestatev1.TimeWithMarker {
 		ret := make([]*racestatev1.TimeWithMarker, len(sectors))
@@ -279,7 +311,12 @@ func (cd *CarData) prepareGrpcData() *racestatev1.Car {
 		}
 		return racestatev1.CarState_CAR_STATE_UNSPECIFIED
 	}
-
+	isPitEntryAfterSf := func(t *trackv1.Track) bool {
+		if t.PitInfo != nil && t.PitInfo.LaneLength > 0 {
+			return t.PitInfo.Entry < t.PitInfo.Exit
+		}
+		return false
+	}
 	ret := &racestatev1.Car{
 		CarIdx:       cd.carIdx,
 		Pos:          int32(cd.pos),
@@ -299,7 +336,27 @@ func (cd *CarData) prepareGrpcData() *racestatev1.Car {
 		Sectors:      convertSectors(cd.laptiming.sectors),
 		State:        convertState(cd.state),
 	}
+	if cd.inlapTime > 0 {
+		ret.TimeInfo = &racestatev1.TimeInfo{
+			Time:    float32(cd.inlapTime),
+			LapMode: cd.lapMode,
+			LapNo:   int32(cd.lap),
+		}
+		if isPitEntryAfterSf(cd.gpd.TrackInfo) {
+			ret.TimeInfo.LapNo = int32(cd.lc)
+		}
+	}
 
+	if cd.outlapTime > 0 {
+		ret.TimeInfo = &racestatev1.TimeInfo{
+			Time:    float32(cd.outlapTime),
+			LapMode: commonv1.LapMode_LAP_MODE_OUTLAP,
+			LapNo:   int32(cd.lc),
+		}
+	}
+	// reset special values
+	cd.inlapTime = 0
+	cd.outlapTime = 0
 	return ret
 }
 
@@ -357,9 +414,22 @@ func (cd *CarData) markSectorsAsOld() {
 
 func (cd *CarData) startLap(t float64) {
 	cd.laptiming.lap.markStart(t)
+	// start the inlap timing only when car is on track
+	// otherwise we can't calculate the inlap time correctly
+	// for tracks where the pit is behind the s/f line
+	// for example: Interlagos, Mount Panorama
+	if cd.trackLoc == int32(irsdk.TrackLocationOnTrack) {
+		cd.inlaptiming.lap.markStart(t) // we may need this when car enters pit road
+	}
 }
 
 func (cd *CarData) stopLap(t float64) float64 {
+	if cd.startOutLap > 0 {
+		if cd.state != CarStatePit {
+			cd.outlapTime = t - cd.startOutLap
+		}
+		cd.startOutLap = 0
+	}
 	return cd.laptiming.lap.markStop(t)
 }
 
@@ -375,17 +445,20 @@ func (cd *CarData) setStandingsLaptime(t float64) {
 	cd.laptiming.lap.duration.time = t
 }
 
-//nolint:lll // wrapping is not helpful here
+//nolint:lll,errcheck // by design
 func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {
 	cw := carWorkData{}
 	cw.carIdx = cd.carIdx
+	cw.sessionTime = justValue(api.GetDoubleValue("SessionTime")).(float64)
 	cw.trackPos = float64(justValue(api.GetValue("CarIdxLapDistPct")).([]float32)[cd.carIdx])
+	cw.trackLoc = justValue(api.GetValue("CarIdxTrackSurface")).([]int32)[cd.carIdx]
 	cw.pos = justValue(api.GetValue("CarIdxPosition")).([]int32)[cd.carIdx]
 	cw.pic = justValue(api.GetValue("CarIdxClassPosition")).([]int32)[cd.carIdx]
 	cw.lap = justValue(api.GetValue("CarIdxLap")).([]int32)[cd.carIdx]
 	cw.lc = justValue(api.GetValue("CarIdxLapCompleted")).([]int32)[cd.carIdx]
 	cw.pit = justValue(api.GetValue("CarIdxOnPitRoad")).([]bool)[cd.carIdx]
 	cw.tireCompound = justValue(api.GetValue("CarIdxTireCompound")).([]int32)[cd.carIdx]
+
 	// maybe put this into the CarStint?
 	// value not unique
 	// when wet race: 0=DRY, 1=WET (EventID 314)
@@ -396,10 +469,12 @@ func (cd *CarData) extractIrsdkData(api *irsdk.Irsdk) *carWorkData {
 
 func (cd *CarData) copyWorkData(cw *carWorkData) {
 	cd.trackPos = gate(cw.trackPos)
+	cd.trackLoc = cw.trackLoc
 	cd.pos = int(cw.pos)
 	cd.pic = int(cw.pic)
 	cd.lap = int(cw.lap)
 	cd.lc = int(cw.lc)
+
 	cd.tireCompound = int(cw.tireCompound)
 	cd.dist = 0
 	cd.interval = 0
