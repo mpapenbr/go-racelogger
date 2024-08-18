@@ -189,14 +189,14 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 
 	r.eventKey = r.config.eventKeyFunc(irYaml)
 	event.Key = r.eventKey
-	r.globalData = processor.GlobalProcessingData{
-		TrackInfo:     track,
-		EventDataInfo: event,
-	}
 
-	err = r.dataprovider.RegisterProvider(event, track, r.config.recordingMode)
+	resp, err := r.dataprovider.RegisterProvider(event, track, r.config.recordingMode)
 	if err != nil {
 		return err
+	}
+	r.globalData = processor.GlobalProcessingData{
+		TrackInfo:     resp.Track,
+		EventDataInfo: event,
 	}
 
 	r.setupMainLoop()

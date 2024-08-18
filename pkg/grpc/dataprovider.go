@@ -71,15 +71,15 @@ func (dpc *DataProviderClient) RegisterProvider(
 	event *eventv1.Event,
 	track *trackv1.Track,
 	recordingMode providerv1.RecordingMode,
-) error {
+) (*providerv1.RegisterEventResponse, error) {
 	req := providerv1.RegisterEventRequest{
 		Event: event, Track: track, Key: event.Key, RecordingMode: recordingMode,
 	}
 	//nolint:errcheck // by design
 	dpc.msgLogger.Log(req.ProtoReflect())
-	_, err := dpc.providerClient.RegisterEvent(
+	resp, err := dpc.providerClient.RegisterEvent(
 		dpc.prepareContext(context.Background()), &req)
-	return err
+	return resp, err
 }
 
 func (dpc *DataProviderClient) prepareContext(ctx context.Context) context.Context {

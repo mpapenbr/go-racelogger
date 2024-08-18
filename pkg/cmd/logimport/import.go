@@ -141,7 +141,8 @@ func (p *importProc) sendMesage(msg protoreflect.Message) error {
 				}
 			}
 		}
-		return p.dpc.RegisterProvider(req.Event, req.Track, p.recordingMode)
+		_, err := p.dpc.RegisterProvider(req.Event, req.Track, p.recordingMode)
+		return err
 	case *providerv1.UnregisterEventRequest:
 		req, _ := msg.Interface().(*providerv1.UnregisterEventRequest)
 		eventKey := req.EventSelector.GetKey()
