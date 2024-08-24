@@ -248,8 +248,8 @@ linters-settings:
     #   - G401
 
     # specify a set of rules to explicitly exclude
-    # excludes:
-    #   - G204
+    excludes:
+      - G115 # integer overflow conversion int (can't exclude this via //nolint:gosec(G115) directive)
 
   gosimple:
     checks: ["all"] # https://staticcheck.io/docs/options#checks for more info
