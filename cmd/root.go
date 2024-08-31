@@ -5,6 +5,7 @@ Copyright 2023 mpapenbr
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -13,13 +14,13 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/cmd/check"
 	importCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/logimport"
 	pingCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/ping"
 	recordCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/record"
 	statusCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/status"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
-	"github.com/mpapenbr/go-racelogger/pkg/util"
 	"github.com/mpapenbr/go-racelogger/version"
 )
 
@@ -34,7 +35,18 @@ var rootCmd = &cobra.Command{
 	Long:    ``,
 	Version: version.FullVersion,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		util.SetupLogger(config.DefaultCliArgs())
+		// util.SetupLogger(config.DefaultCliArgs())
+		logConfig := log.DefaultDevConfig()
+		if config.DefaultCliArgs().LogConfig != "" {
+			var err error
+			logConfig, err = log.LoadConfig(config.DefaultCliArgs().LogConfig)
+			if err != nil {
+				log.Fatal("could not load log config", log.ErrorField(err))
+			}
+		}
+		l := log.NewWithConfig(logConfig, config.DefaultCliArgs().LogLevel)
+		cmd.SetContext(log.AddToContext(context.Background(), l))
+		log.ResetDefault(l)
 	},
 
 	// Uncomment the following line if your bare application
@@ -70,10 +82,10 @@ func init() {
 		"log-level",
 		"info",
 		"controls the log level (debug, info, warn, error, fatal)")
-	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().LogFormat,
-		"log-format",
-		"text",
-		"controls the log output format (json, text)")
+	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().LogConfig,
+		"log-config",
+		"log-prod.yml",
+		"sets the configuration of the internal logger")
 	rootCmd.PersistentFlags().StringVar(&config.DefaultCliArgs().LogFile,
 		"log-file",
 		"",

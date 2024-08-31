@@ -30,7 +30,7 @@ func NewStatusCmd() *cobra.Command {
 }
 
 func checkIracingStatus() error {
-	if util.WaitForSimulation(config.DefaultCliArgs()) {
+	if !util.WaitForSimulation(config.DefaultCliArgs()) {
 		log.Error(ErrSimulationNotRunning.Error())
 		return nil
 	}

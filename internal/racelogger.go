@@ -57,6 +57,7 @@ type Racelogger struct {
 	config       *Config
 	globalData   processor.GlobalProcessingData
 	msgLogger    *os.File
+	log          *log.Logger
 }
 
 func defaultConfig() *Config {
@@ -152,6 +153,7 @@ func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 		),
 		config:    c,
 		msgLogger: grpcMsgLog,
+		log:       log.GetFromContext(c.ctx).Named("rl"),
 	}
 
 	ret.init()
@@ -159,7 +161,7 @@ func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 }
 
 func (r *Racelogger) Close() {
-	log.Debug("Closing Racelogger")
+	r.log.Debug("Closing Racelogger")
 	r.api.Close()
 	r.dataprovider.Close()
 	if r.msgLogger != nil {
@@ -213,16 +215,16 @@ func (r *Racelogger) UnregisterProvider() {
 
 func (r *Racelogger) init() {
 	r.setupWatchdog(time.Second)
-	log.Debug("Ensure iRacing simulation is ready to provide data")
+	r.log.Debug("Ensure iRacing simulation is ready to provide data")
 	for {
 		if r.simIsRunning {
 			break
 		} else {
-			log.Debug("Waiting for initialized simulation")
+			r.log.Debug("Waiting for initialized simulation")
 			time.Sleep(time.Second)
 		}
 	}
-	log.Debug("Telemetry data is available")
+	r.log.Debug("Telemetry data is available")
 }
 
 func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) *eventv1.Event {
@@ -285,22 +287,22 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debug("watchdog received ctx.Done")
+				r.log.Debug("watchdog received ctx.Done")
 				return
 			default:
 				if irsdk.CheckIfSimIsRunning() {
 					if r.api == nil {
-						log.Debug("Initializing irsdk api")
+						r.log.Debug("Initializing irsdk api")
 
 						r.api = irsdk.NewIrsdk()
-						log.Debug("waiting some seconds before start")
+						r.log.Debug("waiting some seconds before start")
 						time.Sleep(5 * time.Second)
 
 						r.api.WaitForValidData()
 						// as long as there are no entries we have to try again
 						for len(r.api.GetValueKeys()) == 0 {
 							r.api.Close()
-							log.Debug("iRacing not yet ready. Retrying in 5s")
+							r.log.Debug("iRacing not yet ready. Retrying in 5s")
 							time.Sleep(5 * time.Second)
 							r.api = irsdk.NewIrsdk()
 							r.api.WaitForValidData()
@@ -314,14 +316,14 @@ func (r *Racelogger) setupWatchdog(interval time.Duration) {
 					} else if r.config.ensureLiveDataInterval > 0 &&
 						time.Since(lastForceLiveData) > r.config.ensureLiveDataInterval {
 
-						log.Debug("Forcing live data")
+						r.log.Debug("Forcing live data")
 						//nolint:errcheck // by design
 						r.api.ReplaySearch(irsdk.ReplaySearchModeEnd)
 						lastForceLiveData = time.Now()
 					}
 				} else {
 					if r.api != nil {
-						log.Debug("Resetting irsdk api")
+						r.log.Debug("Resetting irsdk api")
 						r.api.Close()
 					}
 					r.api = nil
@@ -357,6 +359,7 @@ func (r *Racelogger) setupMainLoop() {
 		processor.WithSpeedmapPublishInterval(r.config.speedmapPublishInterval),
 		processor.WithSpeedmapSpeedThreshold(r.config.speedmapSpeedThreshold),
 		processor.WithMaxSpeed(r.config.maxSpeed),
+		processor.WithContext(r.config.ctx),
 	)
 
 	r.dataprovider.PublishStateFromChannel(r.eventKey, stateChannel)
@@ -370,12 +373,12 @@ func (r *Racelogger) setupMainLoop() {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debug("mainLoop received ctx.Done")
+				r.log.Debug("mainLoop received ctx.Done")
 				return
 			case _, more := <-recordingDoneChannel:
-				log.Debug("mainLoop received recordingDoneChannel", log.Bool("more", more))
+				r.log.Debug("mainLoop received recordingDoneChannel", log.Bool("more", more))
 				if !more {
-					log.Info("Recording done.")
+					r.log.Info("Recording done.")
 					r.config.cancel()
 					return
 				}
@@ -391,7 +394,7 @@ func (r *Racelogger) setupMainLoop() {
 				ok := r.api.GetDataWithDataReadyTimeout(r.config.waitForDataTimeout)
 				getDataDurations = append(getDataDurations, time.Since(startGetData))
 				if len(getDataDurations) == 120 {
-					logDurations("getData", getDataDurations)
+					r.logDurations("getData", getDataDurations)
 					getDataDurations = []time.Duration{}
 				}
 				if ok {
@@ -400,7 +403,7 @@ func (r *Racelogger) setupMainLoop() {
 					procDurations = append(procDurations, time.Since(startProc))
 
 					if len(procDurations) == 120 {
-						logDurations("processedData", procDurations)
+						r.logDurations("processedData", procDurations)
 						procDurations = []time.Duration{}
 					}
 				} else {
@@ -413,7 +416,8 @@ func (r *Racelogger) setupMainLoop() {
 	go mainLoop(r.config.ctx)
 }
 
-func logDurations(msg string, durations []time.Duration) {
+func (r *Racelogger) logDurations(msg string, durations []time.Duration) {
+	myLog := r.log.Named("durations")
 	minTime := 1 * time.Second
 	maxTime := time.Duration(0)
 	sum := int64(0)
@@ -442,7 +446,7 @@ func logDurations(msg string, durations []time.Duration) {
 	if validDurations > 0 {
 		avg = time.Duration(sum / int64(validDurations))
 	}
-	log.Debug(msg,
+	myLog.Debug(msg,
 		log.Int("zeroDurations", zeroDurations),
 		log.Int("validDurations", validDurations),
 		log.Duration("min", minTime),

@@ -2,11 +2,16 @@ package log
 
 import (
 	"io"
+	"maps"
 	"os"
+	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"moul.io/zapfilter"
 )
 
 type Level = zapcore.Level
@@ -26,8 +31,14 @@ const (
 type Field = zap.Field
 
 type Logger struct {
-	l     *zap.Logger // zap ensure that zap.Logger is safe for concurrent use
-	level Level
+	l             *zap.Logger // zap ensure that zap.Logger is safe for concurrent use
+	level         Level
+	baseConfig    *zap.Config
+	loggerConfigs map[string]string
+}
+
+func (l *Logger) Level() Level {
+	return l.level
 }
 
 func (l *Logger) Debug(msg string, fields ...Field) {
@@ -60,6 +71,51 @@ func (l *Logger) Fatal(msg string, fields ...Field) {
 
 func (l *Logger) Log(lvl Level, msg string, fields ...Field) {
 	l.l.Log(lvl, msg, fields...)
+}
+
+func (l *Logger) Named(name string) *Logger {
+	level := l.level
+	fullLoggerName := name
+	if l.l.Name() != "" {
+		fullLoggerName = l.l.Name() + "." + name
+	}
+	loggers := slices.Collect(maps.Keys(l.loggerConfigs))
+	bestMatch := findBestMatch(loggers, fullLoggerName)
+	if bestMatch != "" {
+		if cfg, ok := l.loggerConfigs[bestMatch]; ok {
+			if cfg != "" {
+				lvl, _ := zap.ParseAtomicLevel(cfg)
+				level = lvl.Level()
+			}
+		}
+
+		myConfig := *l.baseConfig
+		myConfig.Level = zap.NewAtomicLevelAt(level)
+		lt, _ := myConfig.Build()
+		return &Logger{
+			l: zap.New(lt.Core(),
+				zap.WithCaller(!l.baseConfig.DisableCaller),
+				zap.AddStacktrace(zap.ErrorLevel),
+				AddCallerSkip(1)).Named(fullLoggerName),
+
+			level:         lt.Level(),
+			baseConfig:    l.baseConfig,
+			loggerConfigs: l.loggerConfigs,
+		}
+	}
+	return &Logger{
+		l:             l.l.Named(name),
+		level:         level,
+		baseConfig:    l.baseConfig,
+		loggerConfigs: l.loggerConfigs,
+	}
+}
+
+func (l *Logger) WithOptions(opts ...Option) *Logger {
+	return &Logger{
+		l:     l.l.WithOptions(opts...),
+		level: l.level,
+	}
 }
 
 // function variables for all field types
@@ -179,7 +235,6 @@ func New(writer io.Writer, level Level, opts ...Option) *Logger {
 	cfg.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format("2006-01-02T15:04:05.000Z0700"))
 	}
-	cfg.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(cfg.EncoderConfig),
@@ -193,9 +248,41 @@ func New(writer io.Writer, level Level, opts ...Option) *Logger {
 	return logger
 }
 
+func NewWithConfig(cfg *Config, level string) *Logger {
+	if level != "" {
+		lvl, _ := zap.ParseAtomicLevel(level)
+		cfg.Zap.Level = lvl
+	}
+
+	lt, _ := cfg.Zap.Build()
+	myCore := lt.Core()
+	if cfg.Filters != nil {
+		// concatenate items to one string
+		var filters string
+		for _, filter := range cfg.Filters {
+			filters += filter + " "
+		}
+		lt = zap.New(zapfilter.NewFilteringCore(
+			myCore,
+			zapfilter.MustParseRules(filters)),
+		)
+	}
+
+	logger := &Logger{
+		l: zap.New(lt.Core(),
+			zap.WithCaller(!cfg.Zap.DisableCaller),
+			zap.AddStacktrace(zap.ErrorLevel),
+			AddCallerSkip(1)),
+		level:         lt.Level(),
+		baseConfig:    &cfg.Zap,
+		loggerConfigs: cfg.Loggers,
+	}
+	return logger
+}
+
 // DevLogger create a new logger for development.
 //
-//nolint:dupl //yes, very similar to ProdLogger
+//nolint:dupl //yes, very similar to New
 func DevLogger(writer io.Writer, level Level, opts ...Option) *Logger {
 	if writer == nil {
 		panic("the writer is nil")
@@ -205,7 +292,6 @@ func DevLogger(writer io.Writer, level Level, opts ...Option) *Logger {
 	cfg.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format("2006-01-02T15:04:05.000"))
 	}
-	cfg.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 	core := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(cfg.EncoderConfig),
 		zapcore.AddSync(writer),
@@ -227,13 +313,39 @@ func (l *Logger) Sync() error {
 	return l.l.Sync()
 }
 
-func (l *Logger) ZapLogger() *zap.Logger {
-	return l.l
-}
-
 func Sync() error {
 	if std != nil {
 		return std.Sync()
 	}
 	return nil
+}
+
+func findBestMatch(stringsList []string, query string) string {
+	var bestMatch string
+	queryParts := strings.Split(query, ".")
+
+	for _, s := range stringsList {
+		sParts := strings.Split(s, ".")
+
+		// we can only match if the query has at least as many parts as the string
+		if len(sParts) <= len(queryParts) {
+			matches := true
+			for i := range sParts {
+				pattern := "^" + sParts[i] + "$"
+				matched, _ := regexp.MatchString(pattern, queryParts[i])
+				if !matched {
+					matches = false
+					break
+				}
+			}
+
+			if matches &&
+				(bestMatch == "" || len(sParts) > len(strings.Split(bestMatch, "."))) {
+
+				bestMatch = s
+			}
+		}
+	}
+
+	return bestMatch
 }

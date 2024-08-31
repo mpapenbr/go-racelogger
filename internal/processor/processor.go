@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"context"
 	"time"
 
 	commonv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/common/v1"
@@ -32,6 +33,7 @@ type Options struct {
 	MaxSpeed                float64 // speeds above this value (km/h) are not processed
 	GlobalProcessingData    *GlobalProcessingData
 	RecordingDoneChannel    chan struct{}
+	ctx                     context.Context
 }
 
 func defaultOptions() *Options {
@@ -93,6 +95,12 @@ func WithRecordingDoneChannel(c chan struct{}) OptionsFunc {
 	}
 }
 
+func WithContext(ctx context.Context) OptionsFunc {
+	return func(o *Options) {
+		o.ctx = ctx
+	}
+}
+
 type Processor struct {
 	api                  *irsdk.Irsdk
 	options              *Options
@@ -111,6 +119,7 @@ type Processor struct {
 	extraInfoOutput      chan *racestatev1.PublishEventExtraInfoRequest
 	recording            bool
 	racing               bool
+	log                  *log.Logger
 }
 
 //nolint:whitespace,funlen // can't get different linters happy
@@ -133,6 +142,7 @@ func NewProcessor(
 	carDriverProc.SetReportChangeFunc(messageProc.DriverEnteredCar)
 	speedmapProc := NewSpeedmapProc(api, opts.ChunkSize, opts.GlobalProcessingData)
 	carProc := NewCarProc(
+		opts.ctx,
 		api,
 		opts.GlobalProcessingData,
 		carDriverProc,
@@ -141,7 +151,9 @@ func NewProcessor(
 		messageProc,
 		opts.MaxSpeed,
 	)
-	raceProc := NewRaceProc(api,
+	raceProc := NewRaceProc(
+		opts.ctx,
+		api,
 		carProc,
 		messageProc,
 		nil)
@@ -162,6 +174,7 @@ func NewProcessor(
 		pitBoundaryProc:      pitBoundaryProc,
 		recording:            true,
 		racing:               false,
+		log:                  log.GetFromContext(opts.ctx).Named("processor"),
 	}
 	ret.init()
 	return &ret
@@ -177,7 +190,7 @@ func (p *Processor) init() {
 		p.sendStateMessage()
 		// if enough data was collected, send it to server
 		if p.pitBoundaryProc.pitEntry.computed && p.pitBoundaryProc.pitExit.computed {
-			log.Info("Pit entry and exit computed during session, sending to server")
+			p.log.Info("Pit entry and exit computed during session, sending to server")
 			pitLaneLength := func(entry, exit float32) float32 {
 				if exit > entry {
 					return (exit - entry) * p.options.GlobalProcessingData.TrackInfo.Length
@@ -209,7 +222,7 @@ func (p *Processor) init() {
 		p.recording = false         // signal recording done
 		p.racing = false            // signal racing done
 		if p.options.RecordingDoneChannel != nil {
-			log.Debug("Signaling recording done")
+			p.log.Debug("Signaling recording done")
 			close(p.options.RecordingDoneChannel)
 		}
 	}
@@ -220,14 +233,14 @@ func (p *Processor) Process() {
 	p.raceProc.Process()
 
 	if HasDriverChange(&y.DriverInfo, &p.lastDriverInfo) {
-		log.Info("DriverInfo changed, updating state")
+		p.log.Info("DriverInfo changed, updating state")
 		var freshYaml iryaml.IrsdkYaml
 		if err := yaml.Unmarshal([]byte(p.api.GetYamlString()), &freshYaml); err != nil {
 			// let's try to repair the yaml and unmarshal again
 			err := yaml.Unmarshal([]byte(p.api.RepairedYaml(p.api.GetYamlString())),
 				&freshYaml)
 			if err != nil {
-				log.Error("Error unmarshalling irsdk yaml", log.ErrorField(err))
+				p.log.Error("Error unmarshalling irsdk yaml", log.ErrorField(err))
 				return
 			}
 		}
