@@ -1,15 +1,5 @@
 package config
 
-var (
-	URL      string // Deprecated: URL of WAMP server
-	Realm    string // Deprecated: Realm for the racelog endpoints
-	Password string // Deprecated: Password for Dataprovider access
-
-	LogLevel  string // sets the log level (zap log level values)
-	LogFormat string // text vs json
-
-)
-
 //nolint:lll // better readability
 type CliArgs struct {
 	Addr                    string  // ism gRPC address
@@ -20,6 +10,7 @@ type CliArgs struct {
 	TLSCa                   string  // path to TLS CA
 	LogLevel                string  // sets the log level (zap log level values)
 	LogFormat               string  // text vs json
+	LogConfig               string  // path to log configuration file
 	LogFile                 string  // log file to write to
 	Token                   string  // token for authentication
 	WaitForServices         string  // duration to wait for other services to be ready

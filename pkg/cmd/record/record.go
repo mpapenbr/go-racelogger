@@ -29,7 +29,7 @@ func NewRecordCmd() *cobra.Command {
 		Use:   "record",
 		Short: "record an iRacing event",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return recordEvent(config.DefaultCliArgs())
+			return recordEvent(cmd.Context(), config.DefaultCliArgs())
 		},
 	}
 
@@ -91,7 +91,7 @@ func NewRecordCmd() *cobra.Command {
 }
 
 //nolint:funlen,gocritic,cyclop // by design
-func recordEvent(cfg *config.CliArgs) error {
+func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 	log.Debug("Starting...")
 	log.Debug("Config", log.Any("cfg", cfg))
 	if ok := util.WaitForSimulation(cfg); !ok {
@@ -129,7 +129,7 @@ func recordEvent(cfg *config.CliArgs) error {
 	if cfg.DoNotPersist {
 		recordingMode = providerv1.RecordingMode_RECORDING_MODE_DO_NOT_PERSIST
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(cmdCtx)
 	r := internal.NewRaceLogger(
 		internal.WithGrpcConn(conn),
 		internal.WithContext(ctx, cancel),

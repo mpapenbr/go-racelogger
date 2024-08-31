@@ -3,11 +3,11 @@ package processor
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	speedmapv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/speedmap/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/mpapenbr/go-racelogger/log"
 )

@@ -2,6 +2,7 @@
 package processor
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -19,6 +20,7 @@ import (
 // this means overall standings, gaps, etc.
 // the data for single cars is processed in CarData
 type CarProc struct {
+	ctx context.Context
 	api *irsdk.Irsdk
 	gpd *GlobalProcessingData
 
@@ -41,6 +43,7 @@ type CarProc struct {
 	bestSectionProc *BestSectionProc
 
 	maxSpeed float64
+	log      *log.Logger
 }
 
 type finishMarker struct {
@@ -117,6 +120,7 @@ func CarManifest(gpd *GlobalProcessingData) []string {
 
 //nolint:whitespace // can't get different linters happy
 func NewCarProc(
+	ctx context.Context,
 	api *irsdk.Irsdk,
 	gpd *GlobalProcessingData,
 	carDriverProc *CarDriverProc,
@@ -126,6 +130,7 @@ func NewCarProc(
 	maxSpeed float64,
 ) *CarProc {
 	ret := &CarProc{
+		ctx:             ctx,
 		api:             api,
 		gpd:             gpd,
 		carDriverProc:   carDriverProc,
@@ -133,6 +138,7 @@ func NewCarProc(
 		speedmapProc:    speedmapProc,
 		messageProc:     messageProc,
 		maxSpeed:        maxSpeed,
+		log:             log.GetFromContext(ctx).Named("CarProc"),
 	}
 
 	ret.init()
@@ -183,6 +189,7 @@ func (p *CarProc) newCarData(carIdx int) *CarData {
 		}
 	}
 	return NewCarData(
+		p.ctx,
 		int32(carIdx),
 		p.carDriverProc,
 		p.pitBoundaryProc,
@@ -241,7 +248,7 @@ func (p *CarProc) Process() {
 
 	curStandingsIR := y.SessionInfo.Sessions[sessionNum].ResultsPositions
 	if curStandingsIR != nil && !reflect.DeepEqual(curStandingsIR, p.lastStandingsIR) {
-		log.Info("New standings available")
+		p.log.Info("New standings available")
 		// fmt.Printf("Standings-Delta: %v\n", cmp.Diff(curStandingsIR, p.lastStandingsIR))
 		p.processStandings(curStandingsIR)
 		// standings changed, update
@@ -270,7 +277,7 @@ func (p *CarProc) carInfo(carIdx int) {
 	// carId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarID
 	// carClassId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarClassID
 
-	log.Warn("CarInfo",
+	p.log.Warn("CarInfo",
 		log.String("carNum", carNum),
 		log.Float64("carPos", carData.trackPos),
 	)
@@ -311,7 +318,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 
 	if !sector.isStarted() {
 		carData.startSector(i, p.currentTime)
-		log.Debug("Sector had no start time. Now initialized",
+		p.log.Debug("Sector had no start time. Now initialized",
 			log.String("carNum", carNum),
 			log.Int("sector", i))
 		return
@@ -331,7 +338,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 
 	// compute own laptime
 	if carData.currentSector == 0 {
-		log.Debug("Car crossed the line", log.String("carNum", carNum))
+		p.log.Debug("Car crossed the line", log.String("carNum", carNum))
 		if carData.isLapStarted() {
 			carData.stopLap(p.currentTime)
 			// no need to call bestSectionProc. This will be handled in processStandings
@@ -341,7 +348,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 			carData.setState(&carFinished{})
 			carData.stintLap -= 1
 			carData.lap = carData.lc
-			log.Info("Car finished the race", log.String("carNum", carNum))
+			p.log.Info("Car finished the race", log.String("carNum", carNum))
 			return
 		} else if len(p.aboutToFinishMarker) > 0 {
 			if float64(carData.lap) > p.aboutToFinishMarker[0].ref {
@@ -349,7 +356,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 				carData.setState(&carFinished{})
 				carData.stintLap -= 1
 				carData.lap = carData.lc
-				log.Info("Car WON the race", log.String("carNum", carNum))
+				p.log.Info("Car WON the race", log.String("carNum", carNum))
 				return
 			}
 		}
@@ -376,8 +383,8 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	// issue warning if car moved backward more than minMoveDistPct
 	if moveDist < 0 && math.Abs(moveDist) > p.minMoveDistPct {
 		//nolint:lll // better readability
-		log.Warn("Car moved backward???",
-			log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
+		carData.log.Warn("Car moved backward???",
+			// log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
 			log.Float64("prevTrackPos", prevTrackPos),
 			log.Float64("currentTrackPos", currentTrackPos),
 			log.Float64("dist", moveDist),
@@ -394,14 +401,14 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 		}
 		speed := float64(p.gpd.TrackInfo.Length) * moveDist / deltaTime * 3.6
 		if speed > p.maxSpeed {
-			log.Warn("Speed above maxSpeed. Ignoring",
+			carData.log.Warn("Speed above maxSpeed. Ignoring",
 				log.Float64("speed", speed),
 				log.Float64("maxSpeed", p.maxSpeed))
 			return -1
 		}
 		return speed
 	} else {
-		log.Debug("Delta time is 0")
+		p.log.Debug("Delta time is 0")
 		return 0
 	}
 	// compute speed
@@ -440,7 +447,7 @@ func (p *CarProc) calcDelta() {
 				currentRaceOrder[i].trackPos,
 				car.trackPos)
 			if deltaByCarClassSpeemap < 0 {
-				log.Warn("Negative delta by speedmap",
+				p.log.Warn("Negative delta by speedmap",
 					log.String("carNum", car.carDriverProc.GetCurrentDriver(car.carIdx).CarNumber),
 					log.Float64("cifPos", currentRaceOrder[i].trackPos),
 					log.Float64("carPos", car.trackPos),
@@ -509,7 +516,7 @@ func (p *CarProc) markBestLaps() {
 	}
 	debugBest := func(title string, car []*CarData) {
 		for _, item := range car {
-			log.Debug("Best lap",
+			p.log.Debug("Best lap",
 				log.String("title", title),
 				log.String("carNum", item.carDriverProc.GetCurrentDriver(item.carIdx).CarNumber),
 				log.Float64("bestLap", item.bestLap.time),
@@ -597,7 +604,7 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 }
 
 func (p *CarProc) RaceStarts() {
-	log.Info("Received race start event. ")
+	p.log.Info("Received race start event. ")
 	// have to check if we need this.....
 	// for _, idx := range p.getProcessableCarIdxs() {
 	// 	p.carLookup[idx].startLap(p.currentTime)

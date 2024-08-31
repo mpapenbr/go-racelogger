@@ -6,8 +6,6 @@ addr: grpc.iracing-tools.de:443
 # Enter the dataprovider token
 token:
 
-log-level: info
-log-format: json
-# Enter the path to the log file. If not set, logs will be written to stdout
-# Existing files will be replaced
-#log-file: racelogger.log
+# use this config for the logs inside the racelogger
+log-config: log-prod.yml
+log-file: racelogger.log

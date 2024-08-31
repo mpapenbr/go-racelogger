@@ -1,12 +1,14 @@
 package processor
 
 import (
+	"context"
 	"fmt"
 
 	commonv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/common/v1"
 	racestatev1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/racestate/v1"
 	trackv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/track/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
+	"go.uber.org/zap"
 
 	"github.com/mpapenbr/go-racelogger/log"
 )
@@ -34,8 +36,8 @@ const (
 
 type carInit struct{}
 
-func (ci *carInit) Enter(cd *CarData) { log.Info("Entering state: carInit") }
-func (ci *carInit) Exit(cd *CarData)  { log.Info("Leaving state: carInit") }
+func (ci *carInit) Enter(cd *CarData) { cd.log.Info("Entering state: carInit") }
+func (ci *carInit) Exit(cd *CarData)  { cd.log.Info("Leaving state: carInit") }
 func (ci *carInit) UpdatePre(cd *CarData, cw *carWorkData) {
 	cd.copyWorkData(cw)
 	if cw.trackPos == -1 {
@@ -58,8 +60,8 @@ func (ci *carInit) UpdatePost(cd *CarData) {}
 
 type carRun struct{}
 
-func (cr *carRun) Enter(cd *CarData) { log.Info("Entering state: carRun") }
-func (cr *carRun) Exit(cd *CarData)  { log.Info("Leaving state: carRun") }
+func (cr *carRun) Enter(cd *CarData) { cd.log.Info("Entering state: carRun") }
+func (cr *carRun) Exit(cd *CarData)  { cd.log.Info("Leaving state: carRun") }
 
 func (cr *carRun) UpdatePre(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
@@ -103,8 +105,8 @@ func handleInlap(cd *CarData, cw *carWorkData) {
 
 type carSlow struct{}
 
-func (cs *carSlow) Enter(cd *CarData) { log.Info("Entering state: carSlow") }
-func (cs *carSlow) Exit(cd *CarData)  { log.Info("Leaving state: carSlow") }
+func (cs *carSlow) Enter(cd *CarData) { cd.log.Info("Entering state: carSlow") }
+func (cs *carSlow) Exit(cd *CarData)  { cd.log.Info("Leaving state: carSlow") }
 
 func (cs *carSlow) UpdatePre(cd *CarData, cw *carWorkData) {
 	if cw.trackPos == -1 {
@@ -135,12 +137,12 @@ func (cs *carSlow) UpdatePost(cd *CarData) {
 type carPit struct{}
 
 func (cp *carPit) Enter(cd *CarData) {
-	log.Info("Entering state: carPit")
+	cd.log.Info("Entering state: carPit")
 	cd.pitBoundaryProc.processPitEntry(cd.trackPos)
 }
 
 func (cp *carPit) Exit(cd *CarData) {
-	log.Info("Leaving state: carPit")
+	cd.log.Info("Leaving state: carPit")
 	cd.pitBoundaryProc.processPitExit(cd.trackPos)
 }
 
@@ -164,8 +166,8 @@ func (cp *carPit) UpdatePost(cd *CarData) {}
 
 type carFinished struct{}
 
-func (cf *carFinished) Enter(cd *CarData) { log.Info("Entering state: carFinished") }
-func (cf *carFinished) Exit(cd *CarData)  { log.Info("Leaving state: carFinished") }
+func (cf *carFinished) Enter(cd *CarData) { cd.log.Info("Entering state: carFinished") }
+func (cf *carFinished) Exit(cd *CarData)  { cd.log.Info("Leaving state: carFinished") }
 func (cf *carFinished) UpdatePre(cd *CarData, cw *carWorkData) {
 	// do nothing - final state
 	cd.state = CarStateFinish
@@ -174,8 +176,8 @@ func (cf *carFinished) UpdatePost(cd *CarData) {}
 
 type carOut struct{}
 
-func (co *carOut) Enter(cd *CarData) { log.Info("Entering state: carOut") }
-func (co *carOut) Exit(cd *CarData)  { log.Info("Leaving state: carOut") }
+func (co *carOut) Enter(cd *CarData) { cd.log.Info("Entering state: carOut") }
+func (co *carOut) Exit(cd *CarData)  { cd.log.Info("Leaving state: carOut") }
 func (co *carOut) UpdatePre(cd *CarData, cw *carWorkData) {
 	// this may happen after resets or tow to pit road.
 	// if not on the pit road it may just be a short connection issue.
@@ -238,10 +240,12 @@ type CarData struct {
 	startOutLap     float64 // session time when car exited pit road
 	inlapTime       float64 // gets computed on pit entry
 	outlapTime      float64 // gets computed after pit exit on s/f
+	log             *log.Logger
 }
 
 //nolint:whitespace // can't get different linters happy
 func NewCarData(
+	ctx context.Context,
 	carIdx int32,
 	carDriverProc *CarDriverProc,
 	pitBoundaryProc *PitBoundaryProc,
@@ -262,6 +266,12 @@ func NewCarData(
 		currentSector:   -1,
 		lastLap:         TimeWithMarker{time: -1, marker: ""},
 		bestLap:         TimeWithMarker{time: -1, marker: ""},
+		log: log.GetFromContext(ctx).Named("carData").WithOptions(
+			zap.Fields(
+				zap.Int32("carIdx", carIdx),
+				zap.String("carNum", carDriverProc.GetCurrentDriver(carIdx).CarNumber),
+			),
+		),
 	}
 
 	return &ret

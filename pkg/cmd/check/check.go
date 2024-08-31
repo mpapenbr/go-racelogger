@@ -20,21 +20,23 @@ func NewVersionCheckCmd() *cobra.Command {
 		Use:   "check",
 		Short: "check if racelogger is compatible with the backend server",
 		Run: func(cmd *cobra.Command, args []string) {
-			checkCompatibility()
+			checkCompatibility(cmd.Context())
 		},
 	}
 
 	return cmd
 }
 
-func checkCompatibility() {
-	log.Debug("Starting...")
+func checkCompatibility(ctx context.Context) {
+	logger := log.GetFromContext(ctx)
+
+	logger.Debug("Starting...")
 
 	var conn *grpc.ClientConn
 	var err error
 
 	if conn, err = util.ConnectGrpc(config.DefaultCliArgs()); err != nil {
-		log.Error("Could not connect to gRPC server", log.ErrorField(err))
+		logger.Error("Could not connect to gRPC server", log.ErrorField(err))
 		return
 	}
 
@@ -42,9 +44,9 @@ func checkCompatibility() {
 	if res, err := c.VersionCheck(context.Background(), &providerv1.VersionCheckRequest{
 		RaceloggerVersion: version.Version,
 	}); err != nil {
-		log.Error("error checking compatibility", log.ErrorField(err))
+		logger.Error("error checking compatibility", log.ErrorField(err))
 	} else {
-		log.Debug("Compatibility check successful",
+		logger.Debug("Compatibility check successful",
 			log.String("this-racelogger-version", version.Version),
 			log.String("server-version", res.ServerVersion),
 			log.String("minimum-racelogger-version", res.SupportedRaceloggerVersion),

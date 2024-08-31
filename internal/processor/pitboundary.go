@@ -1,6 +1,6 @@
 package processor
 
-import "golang.org/x/exp/slices"
+import "slices"
 
 type PitBoundaryData struct {
 	min         float64
