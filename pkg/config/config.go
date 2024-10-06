@@ -22,6 +22,7 @@ type CliArgs struct {
 	MsgLogFile              string  // write grpc messages to this file
 	EnsureLiveData          bool    // if true, replay will be set to live data on connection
 	EnsureLiveDataInterval  string  // interval to set replay mode to live mode
+	WatchdogInterval        string  // interval for watchdog checks (duration)
 }
 
 var cliArgs = NewCliArgs()

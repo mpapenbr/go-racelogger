@@ -1,6 +1,8 @@
 package util
 
 import (
+	"context"
+	"net/http"
 	"time"
 
 	"github.com/mpapenbr/goirsdk/irsdk"
@@ -16,18 +18,25 @@ func WaitForSimulation(cfg *config.CliArgs) bool {
 		timeout = 60 * time.Second
 	}
 
-	log.Debug("Using timout ", log.String("timeout", timeout.String()))
-
-	log.Info("Waiting for iRacing Simulation")
-	deadline := time.Now().Add(timeout)
-	goon := time.Now().Before(deadline)
-	for goon {
-		if irsdk.CheckIfSimIsRunning() {
-			log.Info("iRacing Simulation is running")
-			return true
+	log.Info("Waiting for iRacing Simulation", log.String("timeout", timeout.String()))
+	ticker := time.NewTicker(1 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return false
+		case <-ticker.C:
+			simAvail, err := irsdk.IsSimRunning(ctx, http.DefaultClient)
+			if err != nil {
+				log.Debug("Error connecting sim", log.ErrorField(err))
+				break
+			}
+			if simAvail {
+				ticker.Stop()
+				return true
+			}
 		}
-		time.Sleep(time.Second * 2)
-		goon = time.Now().Before(deadline)
 	}
-	return false
 }

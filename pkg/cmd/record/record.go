@@ -87,6 +87,10 @@ func NewRecordCmd() *cobra.Command {
 		"ensure-live-data-interval",
 		"0s",
 		"set replay to live mode with this interval (if > 0s)")
+	cmd.Flags().StringVar(&config.DefaultCliArgs().WatchdogInterval,
+		"watchdog-interval",
+		"5s",
+		"how often should we issue the watchdog checks (0s == disabled)")
 	return cmd
 }
 
@@ -110,11 +114,19 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 		return nil
 	}
 
-	var waitForData, speedmapPublishInterval, ensureLiveDataInterval time.Duration
+	var waitForData,
+		waitForServicesTimeout,
+		speedmapPublishInterval,
+		ensureLiveDataInterval,
+		watchdogInterval time.Duration
 
 	waitForData, err = time.ParseDuration(cfg.WaitForData)
 	if err != nil {
 		waitForData = time.Second
+	}
+	waitForServicesTimeout, err = time.ParseDuration(cfg.WaitForServices)
+	if err != nil {
+		waitForServicesTimeout = time.Minute
 	}
 	speedmapPublishInterval, err = time.ParseDuration(cfg.SpeedmapPublishInterval)
 	if err != nil {
@@ -123,6 +135,10 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 	ensureLiveDataInterval, err = time.ParseDuration(cfg.EnsureLiveDataInterval)
 	if err != nil {
 		ensureLiveDataInterval = 0
+	}
+	watchdogInterval, err = time.ParseDuration(cfg.WatchdogInterval)
+	if err != nil {
+		watchdogInterval = 5 * time.Second
 	}
 
 	recordingMode := providerv1.RecordingMode_RECORDING_MODE_PERSIST
@@ -133,6 +149,7 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 	r := internal.NewRaceLogger(
 		internal.WithGrpcConn(conn),
 		internal.WithContext(ctx, cancel),
+		internal.WithWaitForServicesTimeout(waitForServicesTimeout),
 		internal.WithWaitForDataTimeout(waitForData),
 		internal.WithSpeedmapPublishInterval(speedmapPublishInterval),
 		internal.WithSpeedmapSpeedThreshold(cfg.SpeedmapSpeedThreshold),
@@ -142,7 +159,12 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 		internal.WithGrpcLogFile(cfg.MsgLogFile),
 		internal.WithEnsureLiveData(cfg.EnsureLiveData),
 		internal.WithEnsureLiveDataInterval(ensureLiveDataInterval),
+		internal.WithWatchdogInterval(watchdogInterval),
 	)
+	if r == nil {
+		log.Error("Could not create racelogger")
+		return nil
+	}
 	defer r.Close()
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
