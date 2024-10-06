@@ -119,7 +119,7 @@ func GetMetricUnit(s string) (float64, error) {
 	value := matches[re.SubexpIndex("value")]
 	unit := matches[re.SubexpIndex("unit")]
 	if f, err := strconv.ParseFloat(value, 64); err == nil {
-		if slices.Contains([]string{"m", "km", "kph", "C"}, unit) {
+		if slices.Contains([]string{"m", "km", "kph", "C", "sec"}, unit) {
 			return f, nil
 		}
 		switch unit {
