@@ -7,6 +7,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ type (
 		cancel                  context.CancelFunc
 		conn                    *grpc.ClientConn
 		eventKeyFunc            EventKeyFunc
+		waitForServicesTimeout  time.Duration
 		waitForDataTimeout      time.Duration
 		speedmapPublishInterval time.Duration
 		speedmapSpeedThreshold  float64
@@ -44,20 +46,23 @@ type (
 		grpcLogFile             string
 		ensureLiveData          bool
 		ensureLiveDataInterval  time.Duration
+		watchdogInterval        time.Duration
 	}
 )
 type ConfigFunc func(cfg *Config)
 
 // Racelogger is the main component to control the connection to iRacing Telemetry API
 type Racelogger struct {
-	eventKey     string
-	api          *irsdk.Irsdk
-	dataprovider *grpcDataclient.DataProviderClient
-	simIsRunning bool
-	config       *Config
-	globalData   processor.GlobalProcessingData
-	msgLogger    *os.File
-	log          *log.Logger
+	eventKey      string
+	api           *irsdk.Irsdk
+	dataprovider  *grpcDataclient.DataProviderClient
+	simIsRunning  bool
+	config        *Config
+	globalData    processor.GlobalProcessingData
+	msgLogger     *os.File
+	log           *log.Logger
+	simStatusChan chan bool
+	httpClient    *http.Client
 }
 
 func defaultConfig() *Config {
@@ -92,6 +97,10 @@ func WithGrpcConn(conn *grpc.ClientConn) ConfigFunc {
 
 func WithContext(ctx context.Context, cancelFunc context.CancelFunc) ConfigFunc {
 	return func(cfg *Config) { cfg.ctx = ctx; cfg.cancel = cancelFunc }
+}
+
+func WithWaitForServicesTimeout(t time.Duration) ConfigFunc {
+	return func(cfg *Config) { cfg.waitForServicesTimeout = t }
 }
 
 func WithWaitForDataTimeout(t time.Duration) ConfigFunc {
@@ -130,6 +139,10 @@ func WithEnsureLiveDataInterval(t time.Duration) ConfigFunc {
 	return func(cfg *Config) { cfg.ensureLiveDataInterval = t }
 }
 
+func WithWatchdogInterval(t time.Duration) ConfigFunc {
+	return func(cfg *Config) { cfg.watchdogInterval = t }
+}
+
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 	c := defaultConfig()
 	for _, fn := range cfg {
@@ -151,13 +164,18 @@ func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 			grpcDataclient.WithToken(c.token),
 			grpcDataclient.WithMsgLogFile(grpcMsgLog),
 		),
-		config:    c,
-		msgLogger: grpcMsgLog,
-		log:       log.GetFromContext(c.ctx).Named("rl"),
+		config:        c,
+		msgLogger:     grpcMsgLog,
+		log:           log.GetFromContext(c.ctx).Named("rl"),
+		simStatusChan: make(chan bool, 1),
+		httpClient:    &http.Client{Timeout: 10 * time.Second},
 	}
 
-	ret.init()
-	return ret
+	if ret.init() {
+		return ret
+	} else {
+		return nil
+	}
 }
 
 func (r *Racelogger) Close() {
@@ -213,18 +231,88 @@ func (r *Racelogger) UnregisterProvider() {
 	}
 }
 
-func (r *Racelogger) init() {
-	r.setupWatchdog(time.Second)
-	r.log.Debug("Ensure iRacing simulation is ready to provide data")
+func (r *Racelogger) init() bool {
+	initSim := make(chan bool, 1)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		r.config.waitForServicesTimeout)
+	defer cancel()
+	r.log.Debug("Waiting for iRacing simulation to be ready")
+	go r.initConnectionToSim(ctx, initSim)
+	res := <-initSim
+	if res {
+		r.log.Debug("Connected to iRacing simulation")
+		if r.config.watchdogInterval > 0 {
+			r.log.Debug("Setting up watchdog",
+				log.Duration("interval", r.config.watchdogInterval))
+			go r.setupWatchdog(r.config.ctx, r.config.watchdogInterval)
+		}
+		r.simIsRunning = true
+	} else {
+		r.log.Error("Could not connect to iRacing simulation")
+	}
+	return res
+}
+
+func (r *Racelogger) setupWatchdog(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+
 	for {
-		if r.simIsRunning {
-			break
-		} else {
-			r.log.Debug("Waiting for initialized simulation")
-			time.Sleep(time.Second)
+		select {
+		case <-ctx.Done():
+			r.log.Debug("setupWatchdog received ctx.Done")
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			simAvail, err := irsdk.IsSimRunning(ctx, r.httpClient)
+			if err != nil {
+				r.log.Debug("Error checking if sim is running", log.ErrorField(err))
+			} else {
+				r.log.Debug("Sim is running", log.Bool("simRunning", simAvail))
+				r.simIsRunning = simAvail
+				r.simStatusChan <- simAvail
+			}
 		}
 	}
-	r.log.Debug("Telemetry data is available")
+}
+
+//nolint:gocognit // by design
+func (r *Racelogger) initConnectionToSim(ctx context.Context, result chan<- bool) {
+	ticker := time.NewTicker(2 * time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			result <- false
+			return
+		case <-ticker.C:
+			simAvail, err := irsdk.IsSimRunning(ctx, r.httpClient)
+			if err != nil {
+				r.log.Debug("Error checking if sim is running", log.ErrorField(err))
+				break
+			}
+			//nolint:nestif // by design
+			if simAvail {
+				r.log.Debug("Sim is running")
+				api := irsdk.NewIrsdk()
+				api.WaitForValidData()
+				if len(api.GetValueKeys()) == 0 {
+					api.Close()
+					r.log.Debug("iRacing telemetry data not yet ready. Need retry")
+				} else {
+					ticker.Stop()
+					if r.config.ensureLiveData {
+						//nolint:errcheck // by design
+						api.ReplaySearch(irsdk.ReplaySearchModeEnd)
+					}
+					api.GetData()
+					r.api = api
+					result <- true
+					return
+				}
+			}
+		}
+	}
 }
 
 func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) *eventv1.Event {
@@ -280,65 +368,7 @@ func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []*eventv1.Session
 	return ret
 }
 
-//nolint:gocognit,nestif,cyclop // by design
-func (r *Racelogger) setupWatchdog(interval time.Duration) {
-	postData := func(ctx context.Context) {
-		lastForceLiveData := time.Now()
-		for {
-			select {
-			case <-ctx.Done():
-				r.log.Debug("watchdog received ctx.Done")
-				return
-			default:
-				if irsdk.CheckIfSimIsRunning() {
-					if r.api == nil {
-						r.log.Debug("Initializing irsdk api")
-
-						r.api = irsdk.NewIrsdk()
-						r.log.Debug("waiting some seconds before start")
-						time.Sleep(5 * time.Second)
-
-						r.api.WaitForValidData()
-						// as long as there are no entries we have to try again
-						for len(r.api.GetValueKeys()) == 0 {
-							r.api.Close()
-							r.log.Debug("iRacing not yet ready. Retrying in 5s")
-							time.Sleep(5 * time.Second)
-							r.api = irsdk.NewIrsdk()
-							r.api.WaitForValidData()
-						}
-						if r.config.ensureLiveData {
-							//nolint:errcheck // by design
-							r.api.ReplaySearch(irsdk.ReplaySearchModeEnd)
-						}
-						r.api.GetData()
-						r.simIsRunning = true
-					} else if r.config.ensureLiveDataInterval > 0 &&
-						time.Since(lastForceLiveData) > r.config.ensureLiveDataInterval {
-
-						r.log.Debug("Forcing live data")
-						//nolint:errcheck // by design
-						r.api.ReplaySearch(irsdk.ReplaySearchModeEnd)
-						lastForceLiveData = time.Now()
-					}
-				} else {
-					if r.api != nil {
-						r.log.Debug("Resetting irsdk api")
-						r.api.Close()
-					}
-					r.api = nil
-					r.simIsRunning = false
-				}
-
-				time.Sleep(interval)
-			}
-		}
-	}
-
-	go postData(r.config.ctx)
-}
-
-//nolint:gocognit // by design
+//nolint:gocognit,cyclop // by design
 func (r *Racelogger) setupMainLoop() {
 	stateChannel := make(chan *racestatev1.PublishStateRequest, 2)
 	speedmapChannel := make(chan *racestatev1.PublishSpeedmapRequest, 1)
@@ -379,6 +409,12 @@ func (r *Racelogger) setupMainLoop() {
 				r.log.Debug("mainLoop received recordingDoneChannel", log.Bool("more", more))
 				if !more {
 					r.log.Info("Recording done.")
+					r.config.cancel()
+					return
+				}
+			case simStatus := <-r.simStatusChan:
+				if !simStatus {
+					r.log.Warn("Sim is not running. Stopping")
 					r.config.cancel()
 					return
 				}
