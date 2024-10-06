@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -360,10 +361,24 @@ func (r *Racelogger) convertSectors(sectors []yaml.Sectors) []*trackv1.Sector {
 }
 
 //nolint:gocritic // by design
-func (r *Racelogger) convertSessions(sectors []yaml.Sessions) []*eventv1.Session {
-	ret := make([]*eventv1.Session, len(sectors))
-	for i, v := range sectors {
-		ret[i] = &eventv1.Session{Num: uint32(v.SessionNum), Name: v.SessionName}
+func (r *Racelogger) convertSessions(sessions []yaml.Sessions) []*eventv1.Session {
+	ret := make([]*eventv1.Session, len(sessions))
+	for i, v := range sessions {
+		// value is "xxx.0000 sec", so we can use our conversion function
+		// (even though it is not a metric depending value)
+		time, _ := processor.GetMetricUnit(v.SessionTime)
+
+		laps := 0
+		if v.SessionLaps != "unlimited" {
+			laps, _ = strconv.Atoi(v.SessionLaps)
+		}
+
+		ret[i] = &eventv1.Session{
+			Num:         uint32(v.SessionNum),
+			Name:        v.SessionName,
+			SessionTime: int32(time),
+			Laps:        int32(laps), //nolint:gosec // by design
+		}
 	}
 	return ret
 }
