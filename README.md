@@ -29,7 +29,6 @@ Flags:
   -h, --help                help for racelogger
       --insecure            allow insecure (non-tls) gRPC connections (used for development only)
       --log-file string     if present logs are written to this file, otherwise to stdout
-      --log-format string   controls the log output format (json, text) (default "text")
       --log-level string    controls the log level (debug, info, warn, error, fatal) (default "info")
   -v, --version             version for racelogger
 
@@ -48,19 +47,17 @@ addr: grpc.iracing-tools.de:443
 token:
 
 log-level: info
-log-format: json
 # Enter the path to the log file. If not set, logs will be written to stdout
 # Existing files will be replaced
 #log-file: racelogger.log
 ```
 
-| Key        | Value       | Info                                                  |
-| ---------- | ----------- | ----------------------------------------------------- |
-| addr       | `host:port` | This is the address of the backend server             |
-| token      |             | A secret credential to identify valid racelogger user |
-| log-level  | `info`      | The level used for logging                            |
-| log-format | `json`      | Logs are written in JSON format. May also use `text`  |
-| log-file   |             | if present logs are written to this file              |
+| Key       | Value       | Info                                                  |
+| --------- | ----------- | ----------------------------------------------------- |
+| addr      | `host:port` | This is the address of the backend server             |
+| token     |             | A secret credential to identify valid racelogger user |
+| log-level | `info`      | The level used for logging                            |
+| log-file  |             | if present logs are written to this file              |
 
 **Notes about TLS**
 
