@@ -62,10 +62,6 @@ func WithMsgLogFile(writer io.Writer) Option {
 	}
 }
 
-func (dpc *DataProviderClient) Close() {
-	dpc.conn.Close()
-}
-
 //nolint:whitespace // by design
 func (dpc *DataProviderClient) RegisterProvider(
 	event *eventv1.Event,
