@@ -4,23 +4,17 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"time"
 
 	"buf.build/gen/go/mpapenbr/iracelog/grpc/go/iracelog/provider/v1/providerv1grpc"
 	providerv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/provider/v1"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
-	"github.com/mpapenbr/go-racelogger/internal"
+	"github.com/mpapenbr/go-racelogger/internal/recorder"
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 	"github.com/mpapenbr/go-racelogger/pkg/util"
 	"github.com/mpapenbr/go-racelogger/version"
-)
-
-var (
-	eventName        string
-	eventDescription string
 )
 
 //nolint:funlen // ok here
@@ -33,12 +27,12 @@ func NewRecordCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&eventName,
+	cmd.Flags().StringVarP(&config.DefaultCliArgs().EventName,
 		"name",
 		"n",
 		"",
 		"Event name")
-	cmd.Flags().StringVarP(&eventDescription,
+	cmd.Flags().StringVarP(&config.DefaultCliArgs().EventDescription,
 		"description",
 		"d",
 		"",
@@ -94,7 +88,7 @@ func NewRecordCmd() *cobra.Command {
 	return cmd
 }
 
-//nolint:funlen,gocritic,cyclop // by design
+//nolint:funlen,gocritic // by design
 func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 	log.Debug("Starting...")
 	log.Debug("Config", log.Any("cfg", cfg))
@@ -109,63 +103,19 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 		log.Error("Could not connect to gRPC server", log.ErrorField(err))
 		return nil
 	}
+	defer conn.Close()
 
 	if ok := validateBackendVersion(conn); !ok {
 		return nil
 	}
 
-	var waitForData,
-		waitForServicesTimeout,
-		speedmapPublishInterval,
-		ensureLiveDataInterval,
-		watchdogInterval time.Duration
+	myCtx, cancel := context.WithCancel(cmdCtx)
+	rec := recorder.NewRecorder(
+		recorder.WithContext(myCtx, cancel),
+		recorder.WithConnection(conn),
+		recorder.WithCliArgs(cfg))
+	defer rec.Close()
 
-	waitForData, err = time.ParseDuration(cfg.WaitForData)
-	if err != nil {
-		waitForData = time.Second
-	}
-	waitForServicesTimeout, err = time.ParseDuration(cfg.WaitForServices)
-	if err != nil {
-		waitForServicesTimeout = time.Minute
-	}
-	speedmapPublishInterval, err = time.ParseDuration(cfg.SpeedmapPublishInterval)
-	if err != nil {
-		speedmapPublishInterval = 30 * time.Second
-	}
-	ensureLiveDataInterval, err = time.ParseDuration(cfg.EnsureLiveDataInterval)
-	if err != nil {
-		ensureLiveDataInterval = 0
-	}
-	watchdogInterval, err = time.ParseDuration(cfg.WatchdogInterval)
-	if err != nil {
-		watchdogInterval = 5 * time.Second
-	}
-
-	recordingMode := providerv1.RecordingMode_RECORDING_MODE_PERSIST
-	if cfg.DoNotPersist {
-		recordingMode = providerv1.RecordingMode_RECORDING_MODE_DO_NOT_PERSIST
-	}
-	ctx, cancel := context.WithCancel(cmdCtx)
-	r := internal.NewRaceLogger(
-		internal.WithGrpcConn(conn),
-		internal.WithContext(ctx, cancel),
-		internal.WithWaitForServicesTimeout(waitForServicesTimeout),
-		internal.WithWaitForDataTimeout(waitForData),
-		internal.WithSpeedmapPublishInterval(speedmapPublishInterval),
-		internal.WithSpeedmapSpeedThreshold(cfg.SpeedmapSpeedThreshold),
-		internal.WithMaxSpeed(cfg.MaxSpeed),
-		internal.WithRecordingMode(recordingMode),
-		internal.WithToken(cfg.Token),
-		internal.WithGrpcLogFile(cfg.MsgLogFile),
-		internal.WithEnsureLiveData(cfg.EnsureLiveData),
-		internal.WithEnsureLiveDataInterval(ensureLiveDataInterval),
-		internal.WithWatchdogInterval(watchdogInterval),
-	)
-	if r == nil {
-		log.Error("Could not create racelogger")
-		return nil
-	}
-	defer r.Close()
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 	defer func() {
@@ -173,13 +123,15 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 		cancel()
 	}()
 
-	log.Debug("Register event")
+	// log.Debug("Register event")
 
-	if err := r.RegisterProvider(eventName, eventDescription); err != nil {
-		return err
-	}
+	// if err := r.RegisterProvider(eventName, eventDescription); err != nil {
+	// 	return err
+	// }
+	rec.Start()
 
 	log.Debug("Waiting for termination")
+
 	select {
 	case <-sigChan:
 		{
@@ -188,17 +140,17 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 			// log.Debug("Waiting some seconds")
 			// time.Sleep(time.Second * 2)
 		}
-	case <-ctx.Done():
+	case <-myCtx.Done():
 		{
 			log.Debug("Received ctx.Done")
 		}
 	}
 
-	log.Debug("Unregister event")
-	r.UnregisterProvider()
+	// log.Debug("Unregister event")
+	// r.UnregisterProvider()
 	// log.Debug("Got signal ", log.Any("signal", v))
 	// wampHandler.shutdown()
-	log.Info("Server terminated")
+	log.Info("Recorder terminated")
 	return nil
 }
 

@@ -23,6 +23,8 @@ type CliArgs struct {
 	EnsureLiveData          bool    // if true, replay will be set to live data on connection
 	EnsureLiveDataInterval  string  // interval to set replay mode to live mode
 	WatchdogInterval        string  // interval for watchdog checks (duration)
+	EventName               string  // Use this as the event name
+	EventDescription        string  // optional event description
 }
 
 var cliArgs = NewCliArgs()

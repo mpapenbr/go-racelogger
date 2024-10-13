@@ -88,6 +88,7 @@ func doImport(fn string) {
 		log.Error("error connecting to grpc server", log.ErrorField(err))
 		return
 	}
+	defer conn.Close()
 	f, err := os.Open(fn)
 	if err != nil {
 		log.Error("error opening file: %v", log.ErrorField(err))
@@ -100,7 +101,7 @@ func doImport(fn string) {
 	}
 	proc.replaceData = replaceData
 	proc.eventKey = eventKey
-	defer proc.close()
+
 	proc.process()
 }
 
@@ -170,8 +171,4 @@ func (p *importProc) updateEventSelector(sel *commonv1.EventSelector) {
 	if p.eventKey != "" {
 		sel.Arg = &commonv1.EventSelector_Key{Key: p.eventKey}
 	}
-}
-
-func (p *importProc) close() {
-	p.dpc.Close()
 }

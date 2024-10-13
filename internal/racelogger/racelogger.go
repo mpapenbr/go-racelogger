@@ -1,5 +1,5 @@
 //nolint:funlen // keep things together
-package internal
+package racelogger
 
 //nolint:gosec // md5 is used as hash for racing events
 import (
@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	commonv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/common/v1"
 	eventv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/event/v1"
 	providerv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/provider/v1"
 	racestatev1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/racestate/v1"
@@ -31,7 +32,7 @@ import (
 )
 
 type (
-	EventKeyFunc func(*yaml.IrsdkYaml) string
+	EventKeyFunc func(api *irsdk.Irsdk) string
 	Config       struct {
 		ctx                     context.Context
 		cancel                  context.CancelFunc
@@ -48,6 +49,7 @@ type (
 		ensureLiveData          bool
 		ensureLiveDataInterval  time.Duration
 		watchdogInterval        time.Duration
+		raceSessionRecordedChan chan int32
 	}
 )
 type ConfigFunc func(cfg *Config)
@@ -66,6 +68,10 @@ type Racelogger struct {
 	httpClient    *http.Client
 }
 
+const (
+	RACE = "Race"
+)
+
 func defaultConfig() *Config {
 	return &Config{
 		eventKeyFunc:            defaultEventKeyFunc,
@@ -79,15 +85,18 @@ func defaultConfig() *Config {
 	}
 }
 
-func defaultEventKeyFunc(irYaml *yaml.IrsdkYaml) string {
+func defaultEventKeyFunc(api *irsdk.Irsdk) string {
+	irYaml, _ := api.GetYaml()
 	out, err := goyaml.Marshal(irYaml.WeekendInfo)
 	if err != nil {
 		log.Warn("Could not marshal WeekendInfo", log.ErrorField(err))
 		out = []byte(uuid.New().String())
 	}
+	sessionNum, _ := api.GetIntValue("SessionNum")
 	//nolint:gosec //just used as hash
 	h := md5.New()
 	h.Write(out)
+	h.Write([]byte(strconv.Itoa(int(sessionNum))))
 	ret := hex.EncodeToString(h.Sum(nil))
 	return ret
 }
@@ -144,6 +153,10 @@ func WithWatchdogInterval(t time.Duration) ConfigFunc {
 	return func(cfg *Config) { cfg.watchdogInterval = t }
 }
 
+func WithRaceSessionRecorded(c chan int32) ConfigFunc {
+	return func(cfg *Config) { cfg.raceSessionRecordedChan = c }
+}
+
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 	c := defaultConfig()
 	for _, fn := range cfg {
@@ -182,10 +195,33 @@ func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {
 func (r *Racelogger) Close() {
 	r.log.Debug("Closing Racelogger")
 	r.api.Close()
-	r.dataprovider.Close()
+
 	if r.msgLogger != nil {
 		r.msgLogger.Close()
 	}
+}
+
+func (r *Racelogger) GetRaceSessions() (all []int, current int32, err error) {
+	irYaml, err := r.api.GetYaml()
+	if err != nil {
+		return []int{}, 0, err
+	}
+	for i := range irYaml.SessionInfo.Sessions {
+		s := irYaml.SessionInfo.Sessions[i]
+		if s.SessionType == RACE {
+			all = append(all, s.SessionNum)
+		}
+	}
+	current, _ = r.api.GetIntValue("SessionNum")
+	return all, current, nil
+}
+
+func (r *Racelogger) GetSessionName(sessionNum int32) string {
+	irYaml, err := r.api.GetYaml()
+	if err != nil {
+		return "n.a."
+	}
+	return irYaml.SessionInfo.Sessions[sessionNum].SessionName
 }
 
 func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error {
@@ -208,7 +244,7 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 		event.Description = eventDescription
 	}
 
-	r.eventKey = r.config.eventKeyFunc(irYaml)
+	r.eventKey = r.config.eventKeyFunc(r.api)
 	event.Key = r.eventKey
 
 	resp, err := r.dataprovider.RegisterProvider(event, track, r.config.recordingMode)
@@ -220,7 +256,45 @@ func (r *Racelogger) RegisterProvider(eventName, eventDescription string) error 
 		EventDataInfo: event,
 	}
 
-	r.setupMainLoop()
+	return nil
+}
+
+//nolint:whitespace // false positive
+func (r *Racelogger) RegisterProviderHeat(
+	eventName, eventDescription, sessionName string,
+) error {
+	irYaml, err := r.api.GetYaml()
+	if err != nil {
+		return err
+	}
+	event := r.createEventInfo(irYaml)
+
+	track := r.createTrackInfo(irYaml)
+
+	if eventName != "" {
+		event.Name = eventName
+	} else {
+		event.Name = fmt.Sprintf("%s %s %s",
+			track.Name,
+			event.EventTime.AsTime().Format("20060102-150405"),
+			sessionName)
+	}
+	if eventDescription != "" {
+		event.Description = eventDescription
+	}
+
+	r.eventKey = r.config.eventKeyFunc(r.api)
+	event.Key = r.eventKey
+
+	resp, err := r.dataprovider.RegisterProvider(event, track, r.config.recordingMode)
+	if err != nil {
+		return err
+	}
+	r.globalData = processor.GlobalProcessingData{
+		TrackInfo:     resp.Track,
+		EventDataInfo: event,
+	}
+
 	return nil
 }
 
@@ -230,6 +304,13 @@ func (r *Racelogger) UnregisterProvider() {
 			log.String("eventKey", r.eventKey),
 			log.ErrorField(err))
 	}
+}
+
+// this will start the recording in a goroutine.
+// call returns immediately
+func (r *Racelogger) StartRecording() {
+	log.Debug("Starting recording")
+	r.setupMainLoop()
 }
 
 func (r *Racelogger) init() bool {
@@ -269,7 +350,7 @@ func (r *Racelogger) setupWatchdog(ctx context.Context, interval time.Duration) 
 			if err != nil {
 				r.log.Debug("Error checking if sim is running", log.ErrorField(err))
 			} else {
-				r.log.Debug("Sim is running", log.Bool("simRunning", simAvail))
+				r.log.Debug("Sim status", log.Bool("simRunning", simAvail))
 				r.simIsRunning = simAvail
 				r.simStatusChan <- simAvail
 			}
@@ -378,6 +459,8 @@ func (r *Racelogger) convertSessions(sessions []yaml.Sessions) []*eventv1.Sessio
 			Name:        v.SessionName,
 			SessionTime: int32(time),
 			Laps:        int32(laps), //nolint:gosec // by design
+			Type:        convertSessionType(v.SessionType),
+			SubType:     convertSessionSubType(v.SessionSubType),
 		}
 	}
 	return ret
@@ -424,7 +507,8 @@ func (r *Racelogger) setupMainLoop() {
 				r.log.Debug("mainLoop received recordingDoneChannel", log.Bool("more", more))
 				if !more {
 					r.log.Info("Recording done.")
-					r.config.cancel()
+					current, _ := r.api.GetIntValue("SessionNum")
+					r.config.raceSessionRecordedChan <- current
 					return
 				}
 			case simStatus := <-r.simStatusChan:
@@ -467,6 +551,54 @@ func (r *Racelogger) setupMainLoop() {
 	go mainLoop(r.config.ctx)
 }
 
+//nolint:gocognit // by design
+func (r *Racelogger) WaitForNextRaceSession(lastRaceSessionNum int32) int32 {
+	ticker := time.NewTicker(2 * time.Second)
+	nextSessionChan := make(chan int32, 1)
+	waitLoop := func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				r.log.Debug("mainLoop received ctx.Done")
+				ticker.Stop()
+				return
+
+			case simStatus := <-r.simStatusChan:
+				if !simStatus {
+					r.log.Warn("Sim is not running. Stopping")
+					ticker.Stop()
+					r.config.cancel()
+					return
+				}
+			case <-ticker.C:
+				ok := r.api.GetDataWithDataReadyTimeout(r.config.waitForDataTimeout)
+				if ok {
+					sessionNum, _ := r.api.GetIntValue("SessionNum")
+					r.log.Debug("Waiting for session to start",
+						log.Int32("lastRaceSessionNum", lastRaceSessionNum),
+						log.Int32("current", sessionNum),
+					)
+					y := r.api.GetLatestYaml()
+					if sessionNum != lastRaceSessionNum &&
+						y.SessionInfo.Sessions[sessionNum].SessionType == RACE {
+
+						r.log.Info("Next race session  started")
+						ticker.Stop()
+						nextSessionChan <- sessionNum
+						return
+					}
+				}
+			}
+		}
+	}
+
+	go waitLoop(r.config.ctx)
+	r.log.Debug("Waiting for next race session to start")
+	ret := <-nextSessionChan
+	r.log.Debug("next session started", log.Int32("sessionNum", ret))
+	return ret
+}
+
 func (r *Racelogger) logDurations(msg string, durations []time.Duration) {
 	myLog := r.log.Named("durations")
 	minTime := 1 * time.Second
@@ -504,4 +636,34 @@ func (r *Racelogger) logDurations(msg string, durations []time.Duration) {
 		log.Duration("max", maxTime),
 		log.Duration("avg", avg),
 		log.String("durations", strings.Join(durationsStrs, ",")))
+}
+
+func convertSessionType(apiValue string) commonv1.SessionType {
+	switch apiValue {
+	case "Practice":
+		return commonv1.SessionType_SESSION_TYPE_PRACTICE
+	case "Open Qualify":
+		return commonv1.SessionType_SESSION_TYPE_OPEN_QUALIFY
+	case "Lone Qualify":
+		return commonv1.SessionType_SESSION_TYPE_LONE_QUALIFY
+	case "Warmup":
+		return commonv1.SessionType_SESSION_TYPE_WARMUP
+	case RACE:
+		return commonv1.SessionType_SESSION_TYPE_RACE
+	default:
+		return commonv1.SessionType_SESSION_TYPE_UNSPECIFIED
+	}
+}
+
+func convertSessionSubType(apiValue string) commonv1.SessionSubType {
+	switch apiValue {
+	case "Heat":
+		return commonv1.SessionSubType_SESSION_SUB_TYPE_HEAT
+	case "Consolation":
+		return commonv1.SessionSubType_SESSION_SUB_TYPE_CONSOLATION
+	case "Feature":
+		return commonv1.SessionSubType_SESSION_SUB_TYPE_FEATURE
+	default:
+		return commonv1.SessionSubType_SESSION_SUB_TYPE_UNSPECIFIED
+	}
 }

@@ -11,6 +11,7 @@ import (
 	racestatev1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/racestate/v1"
 	"github.com/mpapenbr/goirsdk/irsdk"
 	"github.com/mpapenbr/goirsdk/yaml"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/mpapenbr/go-racelogger/log"
@@ -32,6 +33,7 @@ type CarProc struct {
 	prevSessionTime      float64        // used for computing speed/distance
 	prevLapDistPct       []float32      // data from previous iteration (CarIdxLapDistPct)
 	prevLapPos           []int32        // data from previous iteration (CarIdxLap)
+	sessionNum           int32          // current session number
 	carLookup            map[int]*CarData
 
 	lastStandingsIR []yaml.ResultsPositions
@@ -214,6 +216,8 @@ func (p *CarProc) Process() {
 		return
 	}
 	p.currentTime = currentTime
+	sessionNum := justValue(p.api.GetIntValue("SessionNum")).(int32)
+	p.sessionNum = sessionNum
 	processableCars := p.getProcessableCarIdxs()
 	for _, idx := range processableCars {
 		var carData *CarData
@@ -241,7 +245,7 @@ func (p *CarProc) Process() {
 	// at this point all cars have been processed
 
 	y := p.api.GetLatestYaml()
-	sessionNum := justValue(p.api.GetIntValue("SessionNum")).(int32)
+
 	if y.SessionInfo.Sessions[sessionNum].SessionType == "Race" {
 		p.calcDelta()
 	}
@@ -552,6 +556,28 @@ func (p *CarProc) markBestLaps() {
 
 func (p *CarProc) getProcessableCarIdxs() []int {
 	y := p.api.GetLatestYaml()
+	collect := func(entries []yaml.Results) []int {
+		ret := []int{}
+		for i := range y.DriverInfo.Drivers {
+			d := y.DriverInfo.Drivers[i]
+			_, _, found := lo.FindIndexOf(entries,
+				func(item yaml.Results) bool { return item.CarIdx == d.CarIdx },
+			)
+			if found {
+				ret = append(ret, d.CarIdx)
+			}
+		}
+		return ret
+	}
+	// first: check QualifyPositions on session
+	if y.SessionInfo.Sessions[p.sessionNum].QualifyPositions != nil {
+		return collect(y.SessionInfo.Sessions[p.sessionNum].QualifyPositions)
+	}
+	// second: check QualifyResultPositions on top level
+	if y.QualifyResultsInfo.Results != nil {
+		return collect(y.QualifyResultsInfo.Results)
+	}
+	// third: use fallback
 	return getProcessableCarIdxs(y.DriverInfo.Drivers)
 }
 
