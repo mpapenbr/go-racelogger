@@ -14,7 +14,7 @@ require (
 
 require (
 	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241013114515-c41ca0c92b2d.1
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.34.2-20241013114515-c41ca0c92b2d.2
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.35.1-20241013114515-c41ca0c92b2d.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.9.1
 	github.com/samber/lo v1.47.0
@@ -22,7 +22,7 @@ require (
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.21.0
 	google.golang.org/grpc v1.67.1
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.35.1
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
 )
