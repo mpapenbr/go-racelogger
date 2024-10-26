@@ -378,7 +378,7 @@ func (r *Racelogger) initConnectionToSim(ctx context.Context, result chan<- bool
 				r.log.Debug("Sim is running")
 				api := irsdk.NewIrsdk()
 				api.WaitForValidData()
-				if len(api.GetValueKeys()) == 0 {
+				if !r.hasValidApiData(api) {
 					api.Close()
 					r.log.Debug("iRacing telemetry data not yet ready. Need retry")
 				} else {
@@ -395,6 +395,34 @@ func (r *Racelogger) initConnectionToSim(ctx context.Context, result chan<- bool
 			}
 		}
 	}
+}
+
+func (r *Racelogger) hasValidApiData(api *irsdk.Irsdk) bool {
+	api.GetData()
+	return len(api.GetValueKeys()) > 0 && r.hasPlausibleYaml(api)
+}
+
+// the yaml data is considered valid if certain plausible values are present.
+// for example: the track length must be > 0, track sectors are present
+func (r *Racelogger) hasPlausibleYaml(api *irsdk.Irsdk) bool {
+	ret := true
+	y, err := api.GetYaml()
+	if err != nil {
+		return false
+	}
+	if y.WeekendInfo.NumCarTypes == 0 {
+		ret = false
+	}
+	if y.WeekendInfo.TrackID == 0 {
+		ret = false
+	}
+	if len(y.SplitTimeInfo.Sectors) == 0 {
+		ret = false
+	}
+	if len(y.SessionInfo.Sessions) == 0 {
+		ret = false
+	}
+	return ret
 }
 
 func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) *eventv1.Event {
