@@ -1,9 +1,5 @@
-buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241109194506-437da5e6e3fc.1 h1:xfOttQ+aEm3UVcZ4acslxN5AEDX7+GxlTPCulPEBToQ=
-buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241109194506-437da5e6e3fc.1/go.mod h1:zkdNi+Pu/DkhZ1+xxoxRcMJtg4uB867/MUu80zB59dA=
 buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241122203353-c5c0957a3a46.1 h1:mCHtCKw4mct5wCKTlubSWPP6fmFW7Lso/+wYvwR3FZM=
 buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241122203353-c5c0957a3a46.1/go.mod h1:+PWleERDKJKb8+L9liFXvK1oVdM5IljN6gJcNXlAJhc=
-buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.35.2-20241109194506-437da5e6e3fc.1 h1:/gfc9np1KQeXeqozdJvw/W1JwU3PF4oQCDntPjfsORI=
-buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.35.2-20241109194506-437da5e6e3fc.1/go.mod h1:UYZs3luM/l2WjdYPQNN6eQbbaqKa0ypY0suHCOw2knU=
 buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.35.2-20241122203353-c5c0957a3a46.1 h1:MOLN3zeepUJ6AJASrd9Kz2TyjCRmeiejw0tu8crxeV8=
 buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.35.2-20241122203353-c5c0957a3a46.1/go.mod h1:UYZs3luM/l2WjdYPQNN6eQbbaqKa0ypY0suHCOw2knU=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -78,8 +74,9 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
+github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 github.com/tailscale/depaware v0.0.0-20210622194025-720c4b409502/go.mod h1:p9lPsd+cx33L3H9nNoecRRxPssFKUwwI50I3pZ0yT+8=
