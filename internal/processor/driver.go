@@ -169,6 +169,8 @@ func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 		i++
 	}
 	sessionTime := float32(readFloat64(d.api, "SessionTime"))
+	sessionNum := justValue(d.api.GetIntValue("SessionNum")).(int32)
+
 	data := racestatev1.PublishDriverDataRequest{
 		Event: &commonv1.EventSelector{
 			Arg: &commonv1.EventSelector_Key{
@@ -182,6 +184,7 @@ func (d *CarDriverProc) Process(y *yaml.IrsdkYaml) {
 		Entries:        carEntries,
 		CurrentDrivers: currentDriverNames,
 		SessionTime:    sessionTime,
+		SessionNum:     uint32(sessionNum),
 	}
 	d.output <- &data
 }
