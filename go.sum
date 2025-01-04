@@ -1,7 +1,7 @@
-buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241122203353-c5c0957a3a46.1 h1:mCHtCKw4mct5wCKTlubSWPP6fmFW7Lso/+wYvwR3FZM=
-buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241122203353-c5c0957a3a46.1/go.mod h1:+PWleERDKJKb8+L9liFXvK1oVdM5IljN6gJcNXlAJhc=
-buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.35.2-20241122203353-c5c0957a3a46.1 h1:MOLN3zeepUJ6AJASrd9Kz2TyjCRmeiejw0tu8crxeV8=
-buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.35.2-20241122203353-c5c0957a3a46.1/go.mod h1:UYZs3luM/l2WjdYPQNN6eQbbaqKa0ypY0suHCOw2knU=
+buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241230163410-ef433322b2ac.2 h1:tYx71fegF9HLNkuwMV+hOtC4g/svEmEVVdyiUL3CFYc=
+buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241230163410-ef433322b2ac.2/go.mod h1:iImtJxJ3q4kaQI3dgIPuloBykj0Q02bTv+iv3+SHTgs=
+buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.1-20241230163410-ef433322b2ac.1 h1:kxyJL5Uj+HTMyzpbSz1AtKbhvHut4wSr617qMhFSJ4A=
+buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.1-20241230163410-ef433322b2ac.1/go.mod h1:Kqau3YkIRYrdlIS+ghvTYhAtPq7tbZ5wrGP/AoUy9ZI=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -152,10 +152,10 @@ golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 h1:X58yt85/IXCx0Y3ZwN6sEIKZzQtDEYaBWrDvErdXrRE=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53/go.mod h1:GX3210XPVPUjJbTUbvwI8f2IpZDMZuPJWDzDuebbviI=
-google.golang.org/grpc v1.69.0 h1:quSiOM1GJPmPH5XtU+BCoVXcDVJJAzNcoyfC2cCjGkI=
-google.golang.org/grpc v1.69.0/go.mod h1:vyjdE6jLBI76dgpDojsFGNaHlxdjXN9ghpnd2o7JGZ4=
-google.golang.org/protobuf v1.35.2 h1:8Ar7bF+apOIoThw1EdZl0p1oWvMqTHmpA2fRTyZO8io=
-google.golang.org/protobuf v1.35.2/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
+google.golang.org/grpc v1.69.2 h1:U3S9QEtbXC0bYNvRtcoklF3xGtLViumSYxWykJS+7AU=
+google.golang.org/grpc v1.69.2/go.mod h1:vyjdE6jLBI76dgpDojsFGNaHlxdjXN9ghpnd2o7JGZ4=
+google.golang.org/protobuf v1.36.1 h1:yBPeRvTftaleIgM3PZ/WBIZ7XM/eEYAaEyCwvyjq/gk=
+google.golang.org/protobuf v1.36.1/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 h1:YR8cESwS4TdDjEe65xsg0ogRM/Nc3DYOhEAlW+xobZo=
