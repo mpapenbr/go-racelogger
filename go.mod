@@ -14,15 +14,15 @@ require (
 
 require (
 	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20241230163410-ef433322b2ac.2
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.2-20241230163410-ef433322b2ac.1
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.3-20241230163410-ef433322b2ac.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.9.1
 	github.com/samber/lo v1.47.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.22.0
-	google.golang.org/grpc v1.69.2
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/grpc v1.69.4
+	google.golang.org/protobuf v1.36.3
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
 )
