@@ -433,6 +433,7 @@ func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) *eventv1.Event {
 		NumCarTypes:       uint32(irYaml.WeekendInfo.NumCarTypes),
 		TeamRacing:        irYaml.WeekendInfo.TeamRacing > 0,
 		IrSessionId:       int32(irYaml.WeekendInfo.SessionID),
+		IrSubSessionId:    int32(irYaml.WeekendInfo.SubSessionID),
 		RaceloggerVersion: version.Version,
 		EventTime:         timestamppb.Now(),
 		Sessions:          r.convertSessions(irYaml.SessionInfo.Sessions),
