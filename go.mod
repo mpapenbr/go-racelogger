@@ -6,7 +6,7 @@ toolchain go1.23.0
 
 require (
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
 	go.uber.org/zap v1.27.0
 
@@ -17,7 +17,7 @@ require (
 	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.4-20250122225235-2ce5e01e0f36.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.9.1
-	github.com/samber/lo v1.47.0
+	github.com/samber/lo v1.49.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.22.0
