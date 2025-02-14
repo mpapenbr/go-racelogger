@@ -12,7 +12,7 @@ jobs:
   golangci-lint:
     strategy:
       matrix:
-        go-version: [1.23.x]
+        go-version: [1.24.x]
         os: [windows-latest]
 
     runs-on: ${{ matrix.os }}
@@ -30,7 +30,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           # Must be specified without patch version: we always use the latest patch version.
-          version: v1.60
+          version: v1.64
 
           # Optional: golangci-lint command line arguments.
           # args: --issues-exit-code=0
