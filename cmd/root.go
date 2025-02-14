@@ -62,7 +62,6 @@ func Execute() {
 	}
 }
 
-//nolint:funlen // ok here
 func init() {
 	cobra.OnInitialize(initConfig)
 

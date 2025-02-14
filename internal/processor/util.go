@@ -174,7 +174,7 @@ func collectCarClasses(drivers []yaml.Drivers) []*carv1.CarClass {
 //     of tire sets available
 //   - CarClassMaxFuelPct value is 0.0-1.0
 //
-//nolint:lll // readability
+//nolint:lll,errcheck // readability,by design
 func collectCars(drivers []yaml.Drivers) []*carv1.CarInfo {
 	classLookup := carClassesLookup(drivers)
 	ret := []*carv1.CarInfo{}

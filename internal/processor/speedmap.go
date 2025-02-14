@@ -120,7 +120,7 @@ func (s *SpeedmapProc) SetLeaderTrackPos(trackPos float64) {
 	s.leaderTrackPos = trackPos
 }
 
-//nolint:lll,funlen,whitespace // better readability
+//nolint:lll,whitespace // better readability
 func (s *SpeedmapProc) ComputeDeltaTime(
 	carClassId int, trackPosCarInFront, trackPosCurrentCar float64,
 ) float64 {
