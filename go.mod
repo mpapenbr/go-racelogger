@@ -11,8 +11,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250122225235-2ce5e01e0f36.2
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.5-20250122225235-2ce5e01e0f36.1
+	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250212110127-05bd9bba74a7.2
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.5-20250212110127-05bd9bba74a7.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.9.1
 	github.com/samber/lo v1.49.1
