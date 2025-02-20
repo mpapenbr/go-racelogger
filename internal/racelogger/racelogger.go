@@ -74,7 +74,7 @@ const (
 
 func defaultConfig() *Config {
 	return &Config{
-		eventKeyFunc:            defaultEventKeyFunc,
+		eventKeyFunc:            uuidBasedEventKeyFunc,
 		waitForDataTimeout:      1 * time.Second,
 		speedmapPublishInterval: 30 * time.Second,
 		speedmapSpeedThreshold:  0.5,
@@ -85,7 +85,7 @@ func defaultConfig() *Config {
 	}
 }
 
-func defaultEventKeyFunc(api *irsdk.Irsdk) string {
+func eventBasedEventKeyFunc(api *irsdk.Irsdk) string {
 	irYaml, _ := api.GetYaml()
 	out, err := goyaml.Marshal(irYaml.WeekendInfo)
 	if err != nil {
@@ -99,6 +99,10 @@ func defaultEventKeyFunc(api *irsdk.Irsdk) string {
 	h.Write([]byte(strconv.Itoa(int(sessionNum))))
 	ret := hex.EncodeToString(h.Sum(nil))
 	return ret
+}
+
+func uuidBasedEventKeyFunc(api *irsdk.Irsdk) string {
+	return uuid.New().String()
 }
 
 func WithGrpcConn(conn *grpc.ClientConn) ConfigFunc {
@@ -155,6 +159,18 @@ func WithWatchdogInterval(t time.Duration) ConfigFunc {
 
 func WithRaceSessionRecorded(c chan int32) ConfigFunc {
 	return func(cfg *Config) { cfg.raceSessionRecordedChan = c }
+}
+
+func WithEventKeyFunc(f EventKeyFunc) ConfigFunc {
+	return func(cfg *Config) { cfg.eventKeyFunc = f }
+}
+
+func WithUUIDEventKey() ConfigFunc {
+	return func(cfg *Config) { cfg.eventKeyFunc = uuidBasedEventKeyFunc }
+}
+
+func WithEventBasedEventKey() ConfigFunc {
+	return func(cfg *Config) { cfg.eventKeyFunc = eventBasedEventKeyFunc }
 }
 
 func NewRaceLogger(cfg ...ConfigFunc) *Racelogger {

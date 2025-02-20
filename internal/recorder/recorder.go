@@ -202,6 +202,7 @@ func (r *Recorder) createRacelogger() *racelogger.Racelogger {
 		racelogger.WithEnsureLiveDataInterval(r.ensureLiveDataInterval),
 		racelogger.WithWatchdogInterval(r.watchdogInterval),
 		racelogger.WithRaceSessionRecorded(r.raceSessionRecordedChan),
+		racelogger.WithUUIDEventKey(),
 	)
 	if rl == nil {
 		log.Error("Could not create racelogger")
