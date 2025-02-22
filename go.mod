@@ -3,7 +3,7 @@ module github.com/mpapenbr/go-racelogger
 go 1.24
 
 require (
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
 	go.uber.org/zap v1.27.0
@@ -11,8 +11,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250212110127-05bd9bba74a7.2
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.5-20250212110127-05bd9bba74a7.1
+	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250220144045-1ae052574bdc.2
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.5-20250220144045-1ae052574bdc.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.9.1
 	github.com/samber/lo v1.49.1
@@ -40,7 +40,7 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
