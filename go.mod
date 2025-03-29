@@ -5,14 +5,14 @@ go 1.24
 require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 	go.uber.org/zap v1.27.0
 
 )
 
 require (
 	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250220144045-1ae052574bdc.2
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.5-20250220144045-1ae052574bdc.1
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.6-20250220144045-1ae052574bdc.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.9.1
 	github.com/samber/lo v1.49.1
@@ -20,7 +20,7 @@ require (
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.24.0
 	google.golang.org/grpc v1.71.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
 )
