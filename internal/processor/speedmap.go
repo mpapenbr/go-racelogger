@@ -81,7 +81,7 @@ type SpeedmapProc struct {
 	numChunks      int
 	leaderTrackPos float64
 	carClassLookup map[int][]*ChunkData // car class id -> chunk data
-	carIdLookup    map[int][]*ChunkData // car id -> chunk data
+	carIDLookup    map[int][]*ChunkData // car id -> chunk data
 	carLookup      map[int][]*ChunkData // car idx -> chunk data
 }
 
@@ -100,20 +100,20 @@ func NewSpeedmapProc(
 		chunkSize:      chunkSize,
 		numChunks:      int(math.Ceil(float64(gpd.TrackInfo.Length) / float64(chunkSize))),
 		carClassLookup: make(map[int][]*ChunkData),
-		carIdLookup:    make(map[int][]*ChunkData),
+		carIDLookup:    make(map[int][]*ChunkData),
 		carLookup:      make(map[int][]*ChunkData),
 		gpd:            gpd,
 	}
 }
 
-func (s *SpeedmapProc) Process(carData *CarData, carClassId, carId int) {
+func (s *SpeedmapProc) Process(carData *CarData, carClassID, carID int) {
 	s.ensureLookup(s.carLookup, int(carData.carIdx))
-	s.ensureLookup(s.carClassLookup, carClassId)
-	s.ensureLookup(s.carLookup, carId)
+	s.ensureLookup(s.carClassLookup, carClassID)
+	s.ensureLookup(s.carLookup, carID)
 	idx := s.getChunkIdx(carData.trackPos)
 	s.carLookup[int(carData.carIdx)][idx].update(carData.speed)
-	s.carClassLookup[carClassId][idx].update(carData.speed)
-	s.carLookup[carId][idx].update(carData.speed)
+	s.carClassLookup[carClassID][idx].update(carData.speed)
+	s.carLookup[carID][idx].update(carData.speed)
 }
 
 func (s *SpeedmapProc) SetLeaderTrackPos(trackPos float64) {
@@ -122,12 +122,12 @@ func (s *SpeedmapProc) SetLeaderTrackPos(trackPos float64) {
 
 //nolint:lll,whitespace // better readability
 func (s *SpeedmapProc) ComputeDeltaTime(
-	carClassId int, trackPosCarInFront, trackPosCurrentCar float64,
+	carClassID int, trackPosCarInFront, trackPosCurrentCar float64,
 ) float64 {
 	idxCarInFront := s.getChunkIdx(trackPosCarInFront)
 	idxCurrentCar := s.getChunkIdx(trackPosCurrentCar)
-	if _, ok := s.carClassLookup[carClassId]; !ok {
-		log.Warn("No chunk data for car class", log.Int("carClassId", carClassId))
+	if _, ok := s.carClassLookup[carClassID]; !ok {
+		log.Warn("No chunk data for car class", log.Int("carClassId", carClassID))
 		return -1
 	}
 
@@ -139,10 +139,10 @@ func (s *SpeedmapProc) ComputeDeltaTime(
 	// chunk[last] is traveled from StartOfChunk to trackPos
 	chunkData := make([]*ChunkData, 0)
 	if trackPosCarInFront < trackPosCurrentCar {
-		chunkData = append(chunkData, s.carClassLookup[carClassId][idxCurrentCar:]...)
-		chunkData = append(chunkData, s.carClassLookup[carClassId][0:idxCarInFront+1]...)
+		chunkData = append(chunkData, s.carClassLookup[carClassID][idxCurrentCar:]...)
+		chunkData = append(chunkData, s.carClassLookup[carClassID][0:idxCarInFront+1]...)
 	} else {
-		chunkData = append(chunkData, s.carClassLookup[carClassId][idxCurrentCar:idxCarInFront+1]...)
+		chunkData = append(chunkData, s.carClassLookup[carClassID][idxCurrentCar:idxCarInFront+1]...)
 	}
 	if len(chunkData) == 0 {
 		return 0

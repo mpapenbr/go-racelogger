@@ -162,8 +162,8 @@ func (p *CarProc) init() {
 	p.carLookup = make(map[int]*CarData)
 
 	p.bestSectionProc = NewBestSectionProc(len(p.gpd.TrackInfo.Sectors),
-		collectInts(p.carDriverProc.byCarClassIdLookup),
-		collectInts(p.carDriverProc.byCarIdLookup),
+		collectInts(p.carDriverProc.byCarClassIDLookup),
+		collectInts(p.carDriverProc.byCarIDLookup),
 		func(carClassId, carId int) []*CarLaptiming {
 			work := make([]*CarLaptiming, 0)
 			for i, v := range p.carLookup {
@@ -313,8 +313,8 @@ func (p *CarProc) computeTimes(carData *CarData) {
 	}
 
 	carNum := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber
-	carId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarID
-	carClassId := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarClassID
+	carID := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarID
+	carClassID := carData.carDriverProc.GetCurrentDriver(carData.carIdx).CarClassID
 
 	// if the sector has no start time we ignore it. prepare the next one and leave
 	// need a pointer here, otherwise changes done here will get lost
@@ -330,7 +330,7 @@ func (p *CarProc) computeTimes(carData *CarData) {
 
 	sector.markStop(p.currentTime)
 
-	p.bestSectionProc.markSector(sector, carData.currentSector, carClassId, carId)
+	p.bestSectionProc.markSector(sector, carData.currentSector, carClassID, carID)
 
 	// mark sectors as old when crossing the line
 	if carData.currentSector == 0 {
@@ -386,14 +386,22 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	moveDist := currentTrackPos - prevTrackPos
 	// issue warning if car moved backward more than minMoveDistPct
 	if moveDist < 0 && math.Abs(moveDist) > p.minMoveDistPct {
-		//nolint:lll // better readability
-		carData.log.Warn("Car moved backward???",
+		carData.log.Warn(
+			"Car moved backward???",
 			// log.String("carNum", p.carDriverProc.GetCurrentDriver(carData.carIdx).CarNumber),
 			log.Float64("prevTrackPos", prevTrackPos),
 			log.Float64("currentTrackPos", currentTrackPos),
 			log.Float64("dist", moveDist),
-			log.String("prevTrackPos(m)", output(gate(float64(p.prevLapDistPct[carData.carIdx]))*float64(p.gpd.TrackInfo.Length))),
-			log.String("currentTrackPos(m)", output(carData.trackPos*float64(p.gpd.TrackInfo.Length))),
+			log.String(
+				"prevTrackPos(m)",
+				output(
+					gate(float64(p.prevLapDistPct[carData.carIdx]))*float64(p.gpd.TrackInfo.Length),
+				),
+			),
+			log.String(
+				"currentTrackPos(m)",
+				output(carData.trackPos*float64(p.gpd.TrackInfo.Length)),
+			),
 			log.String("dist(m)", output(moveDist*float64(p.gpd.TrackInfo.Length))),
 		)
 		return -1
@@ -418,7 +426,6 @@ func (p *CarProc) calcSpeed(carData *CarData) float64 {
 	// compute speed
 }
 
-//nolint:lll // better readability
 func (p *CarProc) calcDelta() {
 	currentRaceOrder := p.getInCurrentRaceOrder()
 	if len(currentRaceOrder) == 0 {
@@ -441,13 +448,18 @@ func (p *CarProc) calcDelta() {
 			continue
 		}
 
-		car.dist = deltaDistance(currentRaceOrder[i].trackPos, car.trackPos) * float64(p.gpd.TrackInfo.Length)
+		car.dist = deltaDistance(
+			currentRaceOrder[i].trackPos,
+			car.trackPos,
+		) * float64(
+			p.gpd.TrackInfo.Length,
+		)
 		if car.speed <= 0 {
 			car.interval = 999
 		} else {
-			carClassId := car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID
+			carClassID := car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID
 			deltaByCarClassSpeemap := p.speedmapProc.ComputeDeltaTime(
-				carClassId,
+				carClassID,
 				currentRaceOrder[i].trackPos,
 				car.trackPos)
 			if deltaByCarClassSpeemap < 0 {
