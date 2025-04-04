@@ -164,9 +164,9 @@ func NewBestSectionProc(
 //nolint:whitespace // can't get different linters happy
 func (b *BestSectionProc) markSector(
 	st *SectionTiming,
-	numSector, carClassId, carId int,
+	numSector, carClassID, carID int,
 ) string {
-	return b.markInternal(b.sectors[numSector], st, carClassId, carId,
+	return b.markInternal(b.sectors[numSector], st, carClassID, carID,
 		func(cl *CarLaptiming) *SectionTiming { return cl.sectors[numSector] },
 	)
 }
@@ -174,9 +174,9 @@ func (b *BestSectionProc) markSector(
 //nolint:whitespace // can't get different linters happy
 func (b *BestSectionProc) markLap(
 	st *SectionTiming,
-	carClassId, carId int,
+	carClassID, carID int,
 ) string {
-	return b.markInternal(b.lap, st, carClassId, carId,
+	return b.markInternal(b.lap, st, carClassID, carID,
 		func(cl *CarLaptiming) *SectionTiming { return cl.lap })
 }
 
@@ -184,11 +184,11 @@ func (b *BestSectionProc) markLap(
 func (b *BestSectionProc) markInternal(
 	m map[string]float64,
 	st *SectionTiming,
-	carClassId, carId int,
+	carClassID, carID int,
 	extractOther func(*CarLaptiming) *SectionTiming,
 ) string {
-	className := fmt.Sprintf("class%d", carClassId)
-	carName := fmt.Sprintf("car%d", carId)
+	className := fmt.Sprintf("class%d", carClassID)
+	carName := fmt.Sprintf("car%d", carID)
 
 	findWithMarker := func(other []*CarLaptiming, marker string) *SectionTiming {
 		for i := range other {
@@ -245,8 +245,8 @@ func (b *BestSectionProc) markInternal(
 		st.personalBest = st.duration.time
 		st.inProgress = true
 		other := b.collectFromOther(-1, -1)
-		otherByClass := b.collectFromOther(carClassId, -1)
-		otherByCar := b.collectFromOther(carClassId, carId)
+		otherByClass := b.collectFromOther(carClassID, -1)
+		otherByCar := b.collectFromOther(carClassID, carID)
 
 		otherOverall := findWithMarker(other, MarkerOverallBest)
 		otherClass := findWithMarker(otherByClass, MarkerClassBest)
@@ -275,8 +275,8 @@ func (b *BestSectionProc) markInternal(
 		m[carName] = st.duration.time
 		st.personalBest = st.duration.time
 		st.inProgress = true
-		otherByClass := b.collectFromOther(carClassId, -1)
-		otherByCar := b.collectFromOther(carClassId, carId)
+		otherByClass := b.collectFromOther(carClassID, -1)
+		otherByCar := b.collectFromOther(carClassID, carID)
 
 		otherClass := findWithMarker(otherByClass, MarkerClassBest)
 		otherCar := findWithMarker(otherByCar, MarkerCarBest)
@@ -298,7 +298,7 @@ func (b *BestSectionProc) markInternal(
 		m[carName] = st.duration.time
 		st.personalBest = st.duration.time
 		st.inProgress = true
-		otherByCar := b.collectFromOther(carClassId, carId)
+		otherByCar := b.collectFromOther(carClassID, carID)
 		otherCar := findWithMarker(otherByCar, MarkerCarBest)
 		if otherCar != nil {
 			otherCar.markDuration(MarkerPersonalBest)

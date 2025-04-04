@@ -20,7 +20,9 @@ func defaultTestSpeedmapProc() *SpeedmapProc {
 		}
 		return chunks
 	}
-	ret.carClassLookup[1] = createChunks([]float64{100, 100, 100, 100, 100, 100, 100, 100, 100, 100})
+	ret.carClassLookup[1] = createChunks(
+		[]float64{100, 100, 100, 100, 100, 100, 100, 100, 100, 100},
+	)
 	return ret
 }
 
@@ -50,7 +52,11 @@ func TestSpeedmapProc_ComputeDeltaTime(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := defaultTestSpeedmapProc()
-			if got := s.ComputeDeltaTime(1, tt.args.trackPosCarInFront, tt.args.trackPosCurrentCar); !almostEqual(got, tt.want) {
+			if got := s.ComputeDeltaTime(1, tt.args.trackPosCarInFront, tt.args.trackPosCurrentCar); !almostEqual(
+				got,
+				tt.want,
+			) {
+
 				t.Errorf("SpeedmapProc.ComputeDeltaTime() = %v, want %v", got, tt.want)
 			}
 		})

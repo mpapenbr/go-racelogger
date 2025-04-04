@@ -16,7 +16,7 @@ import (
 	"github.com/mpapenbr/go-racelogger/log"
 )
 
-var ErrUnknownValueWithUnit = errors.New("Unknown value with unit format")
+var ErrUnknownValueWithUnit = errors.New("unknown value with unit format")
 
 const (
 	INVALID   = "INVALID"
@@ -174,7 +174,7 @@ func collectCarClasses(drivers []yaml.Drivers) []*carv1.CarClass {
 //     of tire sets available
 //   - CarClassMaxFuelPct value is 0.0-1.0
 //
-//nolint:lll,errcheck // readability,by design
+//nolint:errcheck // readability,by design
 func collectCars(drivers []yaml.Drivers) []*carv1.CarInfo {
 	classLookup := carClassesLookup(drivers)
 	ret := []*carv1.CarInfo{}
@@ -183,15 +183,23 @@ func collectCars(drivers []yaml.Drivers) []*carv1.CarInfo {
 		if isRealDriver(d) {
 			if _, ok := carLookup[d.CarID]; !ok {
 				carLookup[d.CarID] = &carv1.CarInfo{
-					CarId:         uint32(d.CarID),
-					CarClassId:    int32(d.CarClassID),
-					CarClassName:  classLookup[d.CarClassID].Name,
-					Name:          d.CarScreenName,
-					NameShort:     d.CarScreenNameShort,
-					FuelPct:       float32(justValue(GetMetricUnit(d.CarClassMaxFuelPct)).(float64)),
-					PowerAdjust:   float32(justValue(GetMetricUnit(d.CarClassPowerAdjust)).(float64)),
-					WeightPenalty: float32(justValue(GetMetricUnit(d.CarClassWeightPenalty)).(float64)),
-					DryTireSets:   int32(justValue(GetMetricUnit(d.CarClassDryTireSetLimit)).(float64)),
+					CarId:        uint32(d.CarID),
+					CarClassId:   int32(d.CarClassID),
+					CarClassName: classLookup[d.CarClassID].Name,
+					Name:         d.CarScreenName,
+					NameShort:    d.CarScreenNameShort,
+					FuelPct: float32(
+						justValue(GetMetricUnit(d.CarClassMaxFuelPct)).(float64),
+					),
+					PowerAdjust: float32(
+						justValue(GetMetricUnit(d.CarClassPowerAdjust)).(float64),
+					),
+					WeightPenalty: float32(
+						justValue(GetMetricUnit(d.CarClassWeightPenalty)).(float64),
+					),
+					DryTireSets: int32(
+						justValue(GetMetricUnit(d.CarClassDryTireSetLimit)).(float64),
+					),
 				}
 			}
 		}

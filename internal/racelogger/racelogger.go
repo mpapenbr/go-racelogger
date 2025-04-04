@@ -394,7 +394,7 @@ func (r *Racelogger) initConnectionToSim(ctx context.Context, result chan<- bool
 				r.log.Debug("Sim is running")
 				api := irsdk.NewIrsdk()
 				api.WaitForValidData()
-				if !r.hasValidApiData(api) {
+				if !r.hasValidAPIData(api) {
 					api.Close()
 					r.log.Debug("iRacing telemetry data not yet ready. Need retry")
 				} else {
@@ -413,7 +413,7 @@ func (r *Racelogger) initConnectionToSim(ctx context.Context, result chan<- bool
 	}
 }
 
-func (r *Racelogger) hasValidApiData(api *irsdk.Irsdk) bool {
+func (r *Racelogger) hasValidAPIData(api *irsdk.Irsdk) bool {
 	api.GetData()
 	return len(api.GetValueKeys()) > 0 && r.hasPlausibleYaml(api)
 }

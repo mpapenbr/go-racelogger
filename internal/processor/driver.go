@@ -18,8 +18,8 @@ type CarDriverProc struct {
 	api *irsdk.Irsdk
 	// maps carIdx to current driver of the car
 	lookup             map[int32]yaml.Drivers
-	byCarIdLookup      map[int32][]yaml.Drivers
-	byCarClassIdLookup map[int32][]yaml.Drivers
+	byCarIDLookup      map[int32][]yaml.Drivers
+	byCarClassIDLookup map[int32][]yaml.Drivers
 
 	// maps carIdx to all drivers of the team
 	teams map[int32][]yaml.Drivers
@@ -55,8 +55,8 @@ func newCarDriverProcInternal(
 //nolint:gocritic // by design
 func (d *CarDriverProc) init(y *yaml.IrsdkYaml) {
 	d.lookup = make(map[int32]yaml.Drivers)
-	d.byCarIdLookup = make(map[int32][]yaml.Drivers)
-	d.byCarClassIdLookup = make(map[int32][]yaml.Drivers)
+	d.byCarIDLookup = make(map[int32][]yaml.Drivers)
+	d.byCarClassIDLookup = make(map[int32][]yaml.Drivers)
 	d.latestDriverNames = make(map[int32]string)
 
 	d.teams = make(map[int32][]yaml.Drivers)
@@ -70,26 +70,26 @@ func (d *CarDriverProc) init(y *yaml.IrsdkYaml) {
 		d.lookup[int32(v.CarIdx)] = newEntry
 		teamMembers := []yaml.Drivers{newEntry}
 		d.teams[int32(v.CarIdx)] = teamMembers
-		if _, ok := d.byCarIdLookup[int32(v.CarID)]; !ok {
-			d.byCarIdLookup[int32(v.CarID)] = []yaml.Drivers{newEntry}
+		if _, ok := d.byCarIDLookup[int32(v.CarID)]; !ok {
+			d.byCarIDLookup[int32(v.CarID)] = []yaml.Drivers{newEntry}
 		} else {
-			d.byCarIdLookup[int32(v.CarID)] = append(d.byCarIdLookup[int32(v.CarID)], newEntry)
+			d.byCarIDLookup[int32(v.CarID)] = append(d.byCarIDLookup[int32(v.CarID)], newEntry)
 		}
 
-		if _, ok := d.byCarClassIdLookup[int32(v.CarClassID)]; !ok {
-			d.byCarClassIdLookup[int32(v.CarClassID)] = []yaml.Drivers{newEntry}
+		if _, ok := d.byCarClassIDLookup[int32(v.CarClassID)]; !ok {
+			d.byCarClassIDLookup[int32(v.CarClassID)] = []yaml.Drivers{newEntry}
 		} else {
-			d.byCarClassIdLookup[int32(v.CarClassID)] = append(
-				d.byCarClassIdLookup[int32(v.CarClassID)], newEntry)
+			d.byCarClassIDLookup[int32(v.CarClassID)] = append(
+				d.byCarClassIDLookup[int32(v.CarClassID)], newEntry)
 		}
 		d.latestDriverNames[int32(v.CarIdx)] = v.UserName
 		d.reportChange(int32(v.CarIdx))
 	}
 }
 
-func (d *CarDriverProc) reportChange(carId int32) {
+func (d *CarDriverProc) reportChange(carID int32) {
 	if d.reportChangeFunc != nil {
-		d.reportChangeFunc(int(carId))
+		d.reportChangeFunc(int(carID))
 	}
 }
 
