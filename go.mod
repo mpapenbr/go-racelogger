@@ -15,7 +15,7 @@ require (
 	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.6-20250220144045-1ae052574bdc.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.9.1
-	github.com/samber/lo v1.49.1
+	github.com/samber/lo v1.50.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 	golang.org/x/mod v0.24.0
