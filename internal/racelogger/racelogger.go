@@ -455,6 +455,7 @@ func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) *eventv1.Event {
 		Sessions:          r.convertSessions(irYaml.SessionInfo.Sessions),
 		NumCarClasses:     uint32(irYaml.WeekendInfo.NumCarClasses),
 		PitSpeed:          float32(pitSpeed),
+		TireInfos:         r.convertTireInfos(irYaml.DriverInfo.DriverTires),
 	}
 	return &event
 }
@@ -506,6 +507,17 @@ func (r *Racelogger) convertSessions(sessions []yaml.Sessions) []*eventv1.Sessio
 			Laps:        int32(laps), //nolint:gosec // by design
 			Type:        convertSessionType(v.SessionType),
 			SubType:     convertSessionSubType(v.SessionSubType),
+		}
+	}
+	return ret
+}
+
+func (r *Racelogger) convertTireInfos(tires []yaml.DriverTires) []*eventv1.TireInfo {
+	ret := make([]*eventv1.TireInfo, len(tires))
+	for i, v := range tires {
+		ret[i] = &eventv1.TireInfo{
+			Index:        uint32(v.TireIndex),
+			CompoundType: v.TireCompoundType,
 		}
 	}
 	return ret

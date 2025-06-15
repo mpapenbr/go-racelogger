@@ -123,3 +123,9 @@ release-tag:
 	echo "  >  Creating release $(v)"
 	git tag -a  $(v) -m "Release $(v)"
 	git push origin $(v)
+
+.PHONY: update-bufbuild
+## `update-bufbuild`: Update bufbuild artifacts by commit-id. (`make update-bufbuild id=<bufbuild-commit-id>` for example)
+update-bufbuild:
+	go get buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go@$(id)
+	go get buf.build/gen/go/mpapenbr/iracelog/grpc/go@$(id)
