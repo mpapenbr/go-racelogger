@@ -101,6 +101,22 @@ This will start the recording and send data to the backend server every second. 
 
 _Tip:_ Use double quotes (") around values containing blanks and/or other special characters.
 
+### Recording Heat Events
+
+When recording heat events each race session will be recorded as a separate event. In order to assign different names and/or descriptions you may provide multiple arguments.
+Name and description will be assigned to each race in the order provided. If there are more races than provided parameters the last one will be used.
+
+For example: Recording a Heat where the heat race should be a sprint race and the feature race should be the main race.
+
+```console
+racelogger.exe record -n "Sample event" -d "Sprint" -d "Race"
+```
+
+This will record two events:
+
+-   name: "Sample event", description: "Sprint"
+-   name: "Sample event", description: "Race"
+
 **Notes**:
 
 -   Make sure you have set MaxCars to 63 in iRacing. This setting defines the amount of cars for which the iRacing server transfers data to the iRacing simulator.  

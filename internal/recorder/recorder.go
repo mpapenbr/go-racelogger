@@ -100,7 +100,7 @@ func (r *Recorder) initFromCLI(cfg *config.CliArgs) {
 func (r *Recorder) Start() {
 	// loop until all race sessions are recorded
 	r.collectRaceSessions()
-
+	raceIndex := 0 // used to get name/description from cli args
 	recorderLoop := func() {
 		for {
 			select {
@@ -125,9 +125,12 @@ func (r *Recorder) Start() {
 					time.Sleep(2 * time.Second)
 					r.l.Debug("about to register heat session",
 						log.String("name", r.rl.GetSessionName(nextSessionNum)))
+					raceIndex++ // increment our own race index
+					name, descr := computeNameAndDescription(
+						r.cli.EventName, r.cli.EventDescription, raceIndex)
 					if regErr := r.rl.RegisterProviderHeat(
-						r.cli.EventName,
-						r.cli.EventDescription,
+						name,
+						descr,
 						r.rl.GetSessionName(nextSessionNum)); regErr == nil {
 						r.rl.StartRecording()
 					} else {
@@ -138,12 +141,14 @@ func (r *Recorder) Start() {
 		}
 	}
 	go recorderLoop()
+	name, descr := computeNameAndDescription(
+		r.cli.EventName, r.cli.EventDescription, raceIndex)
 	if len(r.raceSessions) == 1 {
 		// we only have one race session. standard procedure
 		r.rl = r.createRacelogger()
 		if regErr := r.rl.RegisterProvider(
-			r.cli.EventName,
-			r.cli.EventDescription); regErr == nil {
+			name,
+			descr); regErr == nil {
 			r.rl.StartRecording()
 		} else {
 			r.l.Error("Error registering session", log.ErrorField(regErr))
@@ -151,8 +156,8 @@ func (r *Recorder) Start() {
 	} else {
 		r.rl = r.createRacelogger()
 		if regErr := r.rl.RegisterProviderHeat(
-			r.cli.EventName,
-			r.cli.EventDescription,
+			name,
+			descr,
 			r.rl.GetSessionName(r.currentSession)); regErr == nil {
 			r.rl.StartRecording()
 		} else {
