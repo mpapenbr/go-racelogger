@@ -27,15 +27,15 @@ func NewRecordCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&config.DefaultCliArgs().EventName,
+	cmd.Flags().StringSliceVarP(&config.DefaultCliArgs().EventName,
 		"name",
 		"n",
-		"",
+		[]string{},
 		"Event name")
-	cmd.Flags().StringVarP(&config.DefaultCliArgs().EventDescription,
+	cmd.Flags().StringSliceVarP(&config.DefaultCliArgs().EventDescription,
 		"description",
 		"d",
-		"",
+		[]string{},
 		"Event description")
 
 	cmd.Flags().StringVar(&config.DefaultCliArgs().WaitForServices,
