@@ -1,6 +1,8 @@
 module github.com/mpapenbr/go-racelogger
 
-go 1.24
+go 1.24.0
+
+toolchain go1.24.4
 
 require (
 	github.com/spf13/cobra v1.9.1
@@ -10,10 +12,10 @@ require (
 )
 
 require (
-	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250518161423-c8b60b159155.2
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.6-20250518161423-c8b60b159155.1
+	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250615055004-4f2eed4e4511.2
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.6-20250615055004-4f2eed4e4511.1
 	github.com/google/uuid v1.6.0
-	github.com/mpapenbr/goirsdk v0.9.1
+	github.com/mpapenbr/goirsdk v0.10.0
 	github.com/samber/lo v1.50.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
@@ -32,8 +34,8 @@ require (
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
 )
 
