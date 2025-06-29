@@ -25,6 +25,7 @@ type CliArgs struct {
 	WatchdogInterval        string   // interval for watchdog checks (duration)
 	EventName               []string // Use this as the event name
 	EventDescription        []string // optional event description
+	ServerServiceAddr       string   // when in server mode, this is the address of the gRPC server for the frontend
 }
 
 var cliArgs = NewCliArgs()

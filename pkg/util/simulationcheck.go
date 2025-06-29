@@ -40,3 +40,31 @@ func WaitForSimulation(cfg *config.CliArgs) bool {
 		}
 	}
 }
+
+func HasValidAPIData(api *irsdk.Irsdk) bool {
+	api.GetData()
+	return len(api.GetValueKeys()) > 0 && hasPlausibleYaml(api)
+}
+
+// the yaml data is considered valid if certain plausible values are present.
+// for example: the track length must be > 0, track sectors are present
+func hasPlausibleYaml(api *irsdk.Irsdk) bool {
+	ret := true
+	y, err := api.GetYaml()
+	if err != nil {
+		return false
+	}
+	if y.WeekendInfo.NumCarTypes == 0 {
+		ret = false
+	}
+	if y.WeekendInfo.TrackID == 0 {
+		ret = false
+	}
+	if len(y.SplitTimeInfo.Sectors) == 0 {
+		ret = false
+	}
+	if len(y.SessionInfo.Sessions) == 0 {
+		ret = false
+	}
+	return ret
+}

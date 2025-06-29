@@ -28,6 +28,7 @@ import (
 	"github.com/mpapenbr/go-racelogger/internal/processor"
 	"github.com/mpapenbr/go-racelogger/log"
 	grpcDataclient "github.com/mpapenbr/go-racelogger/pkg/grpc"
+	"github.com/mpapenbr/go-racelogger/pkg/util"
 	"github.com/mpapenbr/go-racelogger/version"
 )
 
@@ -377,6 +378,37 @@ func (r *Racelogger) setupWatchdog(ctx context.Context, interval time.Duration) 
 //nolint:gocognit // by design
 func (r *Racelogger) initConnectionToSim(ctx context.Context, result chan<- bool) {
 	ticker := time.NewTicker(2 * time.Second)
+	doCheck := func() bool {
+		simAvail, err := irsdk.IsSimRunning(ctx, r.httpClient)
+		if err != nil {
+			r.log.Debug("Error checking if sim is running", log.ErrorField(err))
+			return false
+		}
+		//nolint:nestif // by design
+		if simAvail {
+			r.log.Debug("Sim is running")
+			api := irsdk.NewIrsdk()
+			api.WaitForValidData()
+			if !util.HasValidAPIData(api) {
+				api.Close()
+				r.log.Debug("iRacing telemetry data not yet ready. Need retry")
+			} else {
+				ticker.Stop()
+				if r.config.ensureLiveData {
+					//nolint:errcheck // by design
+					api.ReplaySearch(irsdk.ReplaySearchModeEnd)
+				}
+				api.GetData()
+				r.api = api
+				return true
+			}
+		}
+		return false
+	}
+	if doCheck() {
+		result <- true
+		return
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -384,61 +416,12 @@ func (r *Racelogger) initConnectionToSim(ctx context.Context, result chan<- bool
 			result <- false
 			return
 		case <-ticker.C:
-			simAvail, err := irsdk.IsSimRunning(ctx, r.httpClient)
-			if err != nil {
-				r.log.Debug("Error checking if sim is running", log.ErrorField(err))
-				break
-			}
-			//nolint:nestif // by design
-			if simAvail {
-				r.log.Debug("Sim is running")
-				api := irsdk.NewIrsdk()
-				api.WaitForValidData()
-				if !r.hasValidAPIData(api) {
-					api.Close()
-					r.log.Debug("iRacing telemetry data not yet ready. Need retry")
-				} else {
-					ticker.Stop()
-					if r.config.ensureLiveData {
-						//nolint:errcheck // by design
-						api.ReplaySearch(irsdk.ReplaySearchModeEnd)
-					}
-					api.GetData()
-					r.api = api
-					result <- true
-					return
-				}
+			if doCheck() {
+				result <- true
+				return
 			}
 		}
 	}
-}
-
-func (r *Racelogger) hasValidAPIData(api *irsdk.Irsdk) bool {
-	api.GetData()
-	return len(api.GetValueKeys()) > 0 && r.hasPlausibleYaml(api)
-}
-
-// the yaml data is considered valid if certain plausible values are present.
-// for example: the track length must be > 0, track sectors are present
-func (r *Racelogger) hasPlausibleYaml(api *irsdk.Irsdk) bool {
-	ret := true
-	y, err := api.GetYaml()
-	if err != nil {
-		return false
-	}
-	if y.WeekendInfo.NumCarTypes == 0 {
-		ret = false
-	}
-	if y.WeekendInfo.TrackID == 0 {
-		ret = false
-	}
-	if len(y.SplitTimeInfo.Sectors) == 0 {
-		ret = false
-	}
-	if len(y.SessionInfo.Sessions) == 0 {
-		ret = false
-	}
-	return ret
 }
 
 func (r *Racelogger) createEventInfo(irYaml *yaml.IrsdkYaml) *eventv1.Event {

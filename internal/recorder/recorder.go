@@ -31,6 +31,8 @@ type Recorder struct {
 	raceSessions            []int32
 	currentSession          int32
 	rl                      *racelogger.Racelogger
+	eventNames              []string
+	eventDescriptions       []string
 }
 type Option func(*Recorder)
 
@@ -57,8 +59,19 @@ func WithContext(ctx context.Context, cancel context.CancelFunc) Option {
 	}
 }
 
+func WithEventNames(arg []string) Option {
+	return func(r *Recorder) { r.eventNames = arg }
+}
+
+func WithEventDescriptions(arg []string) Option {
+	return func(r *Recorder) { r.eventDescriptions = arg }
+}
+
 func NewRecorder(opts ...Option) *Recorder {
-	ret := &Recorder{}
+	ret := &Recorder{
+		eventNames:        []string{},
+		eventDescriptions: []string{},
+	}
 	for _, opt := range opts {
 		opt(ret)
 	}
@@ -141,8 +154,9 @@ func (r *Recorder) Start() {
 		}
 	}
 	go recorderLoop()
+
 	name, descr := computeNameAndDescription(
-		r.cli.EventName, r.cli.EventDescription, raceIndex)
+		r.eventNames, r.eventDescriptions, raceIndex)
 	if len(r.raceSessions) == 1 {
 		// we only have one race session. standard procedure
 		r.rl = r.createRacelogger()

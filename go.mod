@@ -12,8 +12,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250615055004-4f2eed4e4511.2
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.6-20250615055004-4f2eed4e4511.1
+	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-00000000000000-4bdcc48fe7ba.2
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.6-00000000000000-4bdcc48fe7ba.1
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.10.0
 	github.com/samber/lo v1.51.0
@@ -27,6 +27,9 @@ require (
 )
 
 require (
+	buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.18.1-00000000000000-4bdcc48fe7ba.1 // indirect
+	connectrpc.com/connect v1.18.1 // indirect
+	connectrpc.com/grpcreflect v1.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
