@@ -21,6 +21,7 @@ Available Commands:
   import      import race from previous logged grpc messages file
   ping        check connection to backend server
   record      record an iRacing event
+  server      run racelogger in server mode
   status      check iracing status
 
 Flags:
@@ -28,7 +29,7 @@ Flags:
       --config string       config file (default is racelogger.yml)
   -h, --help                help for racelogger
       --insecure            allow insecure (non-tls) gRPC connections (used for development only)
-      --log-file string     if present logs are written to this file, otherwise to stdout
+      --log-config string   sets the configuration of the internal logger (default "log-prod.yml")
       --log-level string    controls the log level (debug, info, warn, error, fatal) (default "info")
   -v, --version             version for racelogger
 
@@ -38,26 +39,32 @@ Use "racelogger [command] --help" for more information about a command.
 Along with the executable comes a configuration file
 
 ```
-# This will be the configuration file for the release process.
-# It can be used a template
-
-# Enter the address of the gRPC server
-addr: grpc.iracing-tools.de:443
+# Sample configuration file for the racelogger
+# These are the setting for the demo system running at https://iracelog.iracing-tools.de
+#
+# Enter the address of the gRPC server running in the backend
+addr: grpc.iracing-tools.de
 # Enter the dataprovider token
 token:
 
+# Logger configuration
 log-level: info
-# Enter the path to the log file. If not set, logs will be written to stdout
-# Existing files will be replaced
-#log-file: racelogger.log
+log-config: log-prod.yml
+
+# when running in server mode, the server receives requests at this address
+# if you change this address remember to also change the setting in the frontend
+# the frontend is available at https://iracelog.iracing-tools.de/racelogger
+service-addr: localhost:8135
+
 ```
 
-| Key       | Value       | Info                                                  |
-| --------- | ----------- | ----------------------------------------------------- |
-| addr      | `host:port` | This is the address of the backend server             |
-| token     |             | A secret credential to identify valid racelogger user |
-| log-level | `info`      | The level used for logging                            |
-| log-file  |             | if present logs are written to this file              |
+| Key          | Value       | Info                                                  |
+| ------------ | ----------- | ----------------------------------------------------- |
+| addr         | `host:port` | This is the address of the backend server             |
+| token        |             | A secret credential to identify valid racelogger user |
+| log-level    | `info`      | The level used for logging                            |
+| log-config   |             | path to logger configuration (format,output,...)      |
+| service-addr | `host:port` | listen addr when running in server mode               |
 
 **Notes about TLS**
 
