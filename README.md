@@ -82,10 +82,11 @@ racelogger.exe check
 ```
 
 ```
-Racelogger version  : v0.11.1
-Server version      : v0.14.2
-Minimum racelogger  : v0.11.0
+Racelogger version  : v0.22.0
+Server version      : v0.34.0
+Minimum racelogger  : v0.20.0
 Compatible          : true
+Valid credentials   : true
 ```
 
 ## Record
@@ -140,6 +141,18 @@ racelogger.exe record -n "Sebring 12h" -d "Split #2" --msg-log-file grpc-data.bi
 ```
 
 The recorded messages are stored in a binary format in the file `grpc-data.bin`.
+
+## Server mode
+
+Starting with v0.22.0 the racelogger can be run in server mode. The command is
+
+```console
+racelogger.exe server
+```
+
+The racelogger is controlled by the frontend page at https://iracelog.iracing-tools.de/racelogger
+
+Use this page to control the recording.
 
 ## Ping
 

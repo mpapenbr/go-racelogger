@@ -113,7 +113,10 @@ func recordEvent(cmdCtx context.Context, cfg *config.CliArgs) error {
 	rec := recorder.NewRecorder(
 		recorder.WithContext(myCtx, cancel),
 		recorder.WithConnection(conn),
-		recorder.WithCliArgs(cfg))
+		recorder.WithCliArgs(cfg),
+		recorder.WithEventNames(cfg.EventName),
+		recorder.WithEventDescriptions(cfg.EventDescription),
+	)
 	defer rec.Close()
 
 	sigChan := make(chan os.Signal, 1)

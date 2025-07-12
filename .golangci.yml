@@ -208,6 +208,8 @@ linters:
       - examples$
 issues:
   uniq-by-line: true
+  max-issues-per-linter: 0
+  max-same-issues: 0
 formatters:
   enable:
     - gci

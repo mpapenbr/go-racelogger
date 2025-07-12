@@ -1,11 +1,16 @@
-# This will be the configuration file for the release process.
-# It can be used a template
-
-# Enter the address of the gRPC server
-addr: grpc.iracing-tools.de:443
+# Sample configuration file for the racelogger
+# These are the setting for the demo system running at https://iracelog.iracing-tools.de
+#
+# Enter the address of the gRPC server running in the backend
+addr: grpc.iracing-tools.de
 # Enter the dataprovider token
 token:
 
 # use this config for the logs inside the racelogger
 log-config: log-prod.yml
 log-file: racelogger.log
+
+# when running in server mode, the server receives requests at this address
+# if you change this address remember to also change the setting in the frontend
+# the frontend is available at https://iracelog.iracing-tools.de/racelogger
+service-addr: localhost:8135
