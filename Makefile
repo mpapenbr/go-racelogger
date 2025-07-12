@@ -126,6 +126,7 @@ release-tag:
 
 .PHONY: update-bufbuild
 ## `update-bufbuild`: Update bufbuild artifacts by commit-id. (`make update-bufbuild id=<bufbuild-commit-id>` for example)
-update-bufbuild:
+update-bufbuild:	
 	go get buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go@$(id)
 	go get buf.build/gen/go/mpapenbr/iracelog/grpc/go@$(id)
+	go get buf.build/gen/go/mpapenbr/iracelog/connectrpc/go@$(id)

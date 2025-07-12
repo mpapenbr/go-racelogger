@@ -19,6 +19,7 @@ import (
 	importCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/logimport"
 	pingCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/ping"
 	recordCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/record"
+	serverCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/server"
 	statusCmd "github.com/mpapenbr/go-racelogger/pkg/cmd/status"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
 	"github.com/mpapenbr/go-racelogger/version"
@@ -62,6 +63,7 @@ func Execute() {
 	}
 }
 
+//nolint:funlen // ok here
 func init() {
 	cobra.OnInitialize(initConfig)
 
@@ -113,6 +115,7 @@ func init() {
 	rootCmd.AddCommand(check.NewVersionCheckCmd())
 	rootCmd.AddCommand(recordCmd.NewRecordCmd())
 	rootCmd.AddCommand(importCmd.NewImportCmd())
+	rootCmd.AddCommand(serverCmd.NewServerCmd())
 }
 
 // initConfig reads in config file and ENV variables if set.

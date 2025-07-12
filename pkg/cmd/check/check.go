@@ -8,6 +8,7 @@ import (
 	providerv1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/iracelog/provider/v1"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/mpapenbr/go-racelogger/log"
 	"github.com/mpapenbr/go-racelogger/pkg/config"
@@ -23,14 +24,18 @@ func NewVersionCheckCmd() *cobra.Command {
 			checkCompatibility(cmd.Context())
 		},
 	}
-
+	cmd.Flags().StringVarP(&config.DefaultCliArgs().Token,
+		"token",
+		"t",
+		"",
+		"Dataprovider token")
 	return cmd
 }
 
 func checkCompatibility(ctx context.Context) {
 	logger := log.GetFromContext(ctx)
 
-	logger.Debug("Starting...")
+	logger.Debug("Starting...", log.String("token", config.DefaultCliArgs().Token))
 
 	var conn *grpc.ClientConn
 	var err error
@@ -41,7 +46,9 @@ func checkCompatibility(ctx context.Context) {
 	}
 
 	c := providerv1grpc.NewProviderServiceClient(conn)
-	if res, err := c.VersionCheck(context.Background(), &providerv1.VersionCheckRequest{
+	md := metadata.Pairs("api-token", config.DefaultCliArgs().Token)
+	ctx = metadata.NewOutgoingContext(ctx, md)
+	if res, err := c.VersionCheck(ctx, &providerv1.VersionCheckRequest{
 		RaceloggerVersion: version.Version,
 	}); err != nil {
 		logger.Error("error checking compatibility", log.ErrorField(err))
@@ -50,15 +57,19 @@ func checkCompatibility(ctx context.Context) {
 			log.String("this-racelogger-version", version.Version),
 			log.String("server-version", res.ServerVersion),
 			log.String("minimum-racelogger-version", res.SupportedRaceloggerVersion),
-			log.Bool("compatible", res.RaceloggerCompatible))
+			log.Bool("compatible", res.RaceloggerCompatible),
+			log.Bool("valid-credentials", res.ValidCredentials),
+		)
 		fmt.Printf(`
 Racelogger version  : v%s
 Server version      : v%s
 Minimum racelogger  : %s
-Compatible          : %t`,
+Compatible          : %t
+Valid credentials   : %t`,
 			version.Version,
 			res.ServerVersion,
 			res.SupportedRaceloggerVersion,
-			res.RaceloggerCompatible)
+			res.RaceloggerCompatible,
+			res.ValidCredentials)
 	}
 }
