@@ -187,7 +187,7 @@ func (s *SpeedmapProc) CreatePayload() *speedmapv1.Speedmap {
 		Data:           content,
 		SessionTime:    float32(readFloat64(s.api, "SessionTime")),
 		TimeOfDay:      uint32(readFloat32(s.api, "SessionTimeOfDay")),
-		TrackTemp:      readFloat32(s.api, "TrackTemp"),
+		TrackTemp:      readFloat32(s.api, "TrackTempCrew"),
 		LeaderTrackPos: float32(s.leaderTrackPos),
 	}
 	return ret

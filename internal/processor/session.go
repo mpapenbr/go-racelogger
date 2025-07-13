@@ -23,7 +23,7 @@ func (s *SessionProc) CreatePayload() *racestatev1.Session {
 		AirTemp:       readFloat32(s.api, "AirTemp"),
 		AirDensity:    readFloat32(s.api, "AirDensity"),
 		AirPressure:   readFloat32(s.api, "AirPressure"),
-		TrackTemp:     readFloat32(s.api, "TrackTemp"),
+		TrackTemp:     readFloat32(s.api, "TrackTempCrew"),
 		WindDir:       readFloat32(s.api, "WindDir"),
 		WindVel:       readFloat32(s.api, "WindVel"),
 		TrackWetness:  convertTrackWetness(s.api),
