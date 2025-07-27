@@ -17,6 +17,8 @@ import (
 func ConnectGrpc(cfg *config.CliArgs) (*grpc.ClientConn, error) {
 	if cfg.Insecure {
 		return grpc.NewClient(cfg.Addr,
+			grpc.WithUnaryInterceptor(
+				CookieInterceptor(NewJar(), cfg.Addr)),
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
 		tlsConfig := &tls.Config{
@@ -44,6 +46,8 @@ func ConnectGrpc(cfg *config.CliArgs) (*grpc.ClientConn, error) {
 			tlsConfig.InsecureSkipVerify = true
 		}
 		return grpc.NewClient(cfg.Addr,
+			grpc.WithUnaryInterceptor(
+				CookieInterceptor(NewJar(), cfg.Addr)),
 			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	}
 }
