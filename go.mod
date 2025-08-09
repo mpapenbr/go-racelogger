@@ -14,7 +14,7 @@ require (
 require (
 	buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.18.1-20250705185745-385bdc10baf0.1
 	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250705185745-385bdc10baf0.2
-	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.6-20250705185745-385bdc10baf0.1
+	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.7-20250705185745-385bdc10baf0.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/google/uuid v1.6.0
@@ -22,10 +22,10 @@ require (
 	github.com/samber/lo v1.51.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc
-	golang.org/x/mod v0.26.0
-	golang.org/x/net v0.42.0
+	golang.org/x/mod v0.27.0
+	golang.org/x/net v0.43.0
 	google.golang.org/grpc v1.74.2
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.7
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
 )
@@ -37,8 +37,8 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sagikazarmark/locafero v0.9.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
 )
 
