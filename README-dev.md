@@ -7,7 +7,7 @@
 [![Dependencies Status](https://img.shields.io/badge/Dependencies-Up%20to%20Date-brightgreen?style=for-the-badge&logo=dependabot)][dependabot-pulls]
 [![Semantic Versioning](https://img.shields.io/badge/versioning-semantic-black?style=for-the-badge&logo=semver)][github-releases]
 [![License](https://img.shields.io/github/license/mpapenbr/go-racelogger?color=red&style=for-the-badge)][project-license]
-[![Go v1.24](https://img.shields.io/badge/Go-%20v1.24-black?style=for-the-badge&logo=go)][gomod-file]
+[![Go v1.25](https://img.shields.io/badge/Go-%20v1.25-black?style=for-the-badge&logo=go)][gomod-file]
 
 Racelogger for iRacelog project
 
