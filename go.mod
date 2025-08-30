@@ -18,7 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.10.0
 	github.com/samber/lo v1.51.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc
 	golang.org/x/mod v0.27.0
 	golang.org/x/net v0.43.0
