@@ -40,10 +40,11 @@ Along with the executable comes a configuration file
 
 ```
 # Sample configuration file for the racelogger
-# These are the setting for the demo system running at https://iracelog.iracing-tools.de
+# These are the settings for the demo tenant system running at https://demo.iracelog.iracing-tools.de
+# Tenants will recieve their own subdomain (instead of demo) and a token
 #
 # Enter the address of the gRPC server running in the backend
-addr: grpc.iracing-tools.de
+addr: grpc-tenant-in.iracing-tools.de
 # Enter the dataprovider token
 token:
 
@@ -51,7 +52,7 @@ token:
 log-level: info
 log-config: log-prod.yml
 
-# when running in server mode, the server receives requests at this address
+# when running in server mode, the server recieves requests at this address
 # if you change this address remember to also change the setting in the frontend
 # the frontend is available at https://iracelog.iracing-tools.de/racelogger
 service-addr: localhost:8135
