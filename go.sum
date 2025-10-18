@@ -1,5 +1,5 @@
-buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.19.1-20250705185745-385bdc10baf0.1 h1:iwx1aToQ5oOL0dN09ZkVQv+Uin21b7uNZUNQLHNRKQc=
-buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.19.1-20250705185745-385bdc10baf0.1/go.mod h1:thENv10rdPzjZWNNsG3r8Zf6JW8ZIq4RoJCDV2MjbfM=
+buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.19.1-20250705185745-385bdc10baf0.2 h1:haIayqSuwaGRV//uBL2a9wLioVFOzSumlBqlR4WlzrQ=
+buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.19.1-20250705185745-385bdc10baf0.2/go.mod h1:thENv10rdPzjZWNNsG3r8Zf6JW8ZIq4RoJCDV2MjbfM=
 buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250705185745-385bdc10baf0.2 h1:XrHNxnI5kVEfr4MxGy3maljr2qXmmQkg93vddgqxmDY=
 buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.5.1-20250705185745-385bdc10baf0.2/go.mod h1:n0O9L+AgWW5DoKRaFA46SVggEkp+q4CiovlMrHfqbf4=
 buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.10-20250705185745-385bdc10baf0.1 h1:nwo7Fng89I75ZIzlRGxwFjYUmyMn1ziZfjSGMYfLOM4=
