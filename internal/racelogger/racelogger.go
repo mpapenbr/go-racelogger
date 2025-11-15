@@ -474,9 +474,12 @@ func (r *Racelogger) convertSectors(sectors []yaml.Sectors) []*trackv1.Sector {
 func (r *Racelogger) convertSessions(sessions []yaml.Sessions) []*eventv1.Session {
 	ret := make([]*eventv1.Session, len(sessions))
 	for i, v := range sessions {
-		// value is "xxx.0000 sec", so we can use our conversion function
-		// (even though it is not a metric depending value)
-		time, _ := processor.GetMetricUnit(v.SessionTime)
+		time := 0.0
+		if v.SessionTime != "unlimited" {
+			// value is "xxx.0000 sec", so we can use our conversion function
+			// (even though it is not a metric depending value)
+			time, _ = processor.GetMetricUnit(v.SessionTime)
+		}
 
 		laps := 0
 		if v.SessionLaps != "unlimited" {
