@@ -20,7 +20,7 @@ require (
 	github.com/samber/lo v1.52.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc
-	golang.org/x/mod v0.31.0
+	golang.org/x/mod v0.32.0
 	golang.org/x/net v0.48.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
