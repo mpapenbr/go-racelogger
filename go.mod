@@ -11,7 +11,7 @@ require (
 
 require (
 	buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.19.1-20251019125030-8cb75f92a51d.2
-	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.6.0-20251019125030-8cb75f92a51d.1
+	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.6.1-20251019125030-8cb75f92a51d.1
 	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.11-20251019125030-8cb75f92a51d.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpcreflect v1.3.0
