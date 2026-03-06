@@ -1,5 +1,8 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # Make sure to check the documentation at https://goreleaser.com
+
+version: 2
+
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -43,6 +46,17 @@ checksum:
   name_template: "checksums.txt"
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes" # needed on cosign 2.0.0+
+    artifacts: checksum
+    output: true
+
 
 release:
   prerelease: auto

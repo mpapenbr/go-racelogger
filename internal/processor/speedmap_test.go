@@ -1,4 +1,3 @@
-//nolint:lll // better readability
 package processor
 
 import (
@@ -52,7 +51,11 @@ func TestSpeedmapProc_ComputeDeltaTime(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := defaultTestSpeedmapProc()
-			if got := s.ComputeDeltaTime(1, tt.args.trackPosCarInFront, tt.args.trackPosCurrentCar); !almostEqual(
+			if got := s.ComputeDeltaTime(
+				1,
+				tt.args.trackPosCarInFront,
+				tt.args.trackPosCurrentCar,
+			); !almostEqual(
 				got,
 				tt.want,
 			) {

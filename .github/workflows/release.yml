@@ -10,11 +10,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v6
-
-      - name: Unshallow Fetch
-        run: git fetch --prune --unshallow
+        with:
+          fetch-depth: 0 # this is important, otherwise it won't checkout the full tree (i.e. no previous tags)
 
       - uses: actions/setup-go@v6
         with:
@@ -24,7 +25,10 @@ jobs:
         id: rd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      
+      - name: Prepare cosign installer
+        uses: sigstore/cosign-installer@v4.0.0
+        
       - name: prepare changlog
         shell: bash
         run: |
@@ -40,3 +44,7 @@ jobs:
         # Note: The standard setting for the repository doesn't allow the default GITHUB_TOKEN to be used here
         # Either define a separate Personal Access Token or permit the default GITHUB_TOKEN read/write access
         # see section "Workflow permissions" on https://github.com/mpapenbr/go-racelogger/settings/actions
+      - name: Attest checksums
+        uses: actions/attest@v4
+        with:
+          subject-checksums: dist/checksums.txt
