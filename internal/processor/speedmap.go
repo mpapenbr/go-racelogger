@@ -120,7 +120,7 @@ func (s *SpeedmapProc) SetLeaderTrackPos(trackPos float64) {
 	s.leaderTrackPos = trackPos
 }
 
-//nolint:lll,whitespace // better readability
+//nolint:lll,whitespace,funlen // better readability
 func (s *SpeedmapProc) ComputeDeltaTime(
 	carClassID int, trackPosCarInFront, trackPosCurrentCar float64,
 ) float64 {
@@ -142,7 +142,9 @@ func (s *SpeedmapProc) ComputeDeltaTime(
 		chunkData = append(chunkData, s.carClassLookup[carClassID][idxCurrentCar:]...)
 		chunkData = append(chunkData, s.carClassLookup[carClassID][0:idxCarInFront+1]...)
 	} else {
-		chunkData = append(chunkData, s.carClassLookup[carClassID][idxCurrentCar:idxCarInFront+1]...)
+		chunkData = append(
+			chunkData,
+			s.carClassLookup[carClassID][idxCurrentCar:idxCarInFront+1]...)
 	}
 	if len(chunkData) == 0 {
 		return 0
