@@ -17,12 +17,12 @@ require (
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/google/uuid v1.6.0
 	github.com/mpapenbr/goirsdk v0.10.0
-	github.com/samber/lo v1.52.0
+	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc
 	golang.org/x/mod v0.33.0
 	golang.org/x/net v0.51.0
-	google.golang.org/grpc v1.79.1
+	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
