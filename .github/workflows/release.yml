@@ -21,13 +21,13 @@ jobs:
         with:
           go-version-file: "go.mod"
 
-      - uses: release-drafter/release-drafter@v6
+      - uses: release-drafter/release-drafter@v7
         id: rd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Prepare cosign installer
-        uses: sigstore/cosign-installer@v4.0.0
+        uses: sigstore/cosign-installer@v4.1.0
         
       - name: prepare changlog
         shell: bash
