@@ -70,6 +70,8 @@ func computeFlagState(state int32, flags int64) string {
 }
 
 // returns true if we should record data
+//
+//nolint:goconst // by design
 func shouldRecord(api *irsdk.Irsdk) bool {
 	return slices.Contains([]string{"GREEN", "YELLOW", "CHECKERED"}, getRaceState(api))
 }

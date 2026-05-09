@@ -1,4 +1,4 @@
-//nolint:funlen,lll // by design for tests
+//nolint:funlen,lll,goconst // by design for tests
 package processor
 
 import (

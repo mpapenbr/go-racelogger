@@ -13,8 +13,6 @@ import (
 	v1 "buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go/racelogger/v1"
 	"connectrpc.com/grpcreflect"
 	"github.com/mpapenbr/goirsdk/irsdk"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
@@ -189,9 +187,12 @@ func (s *serverImpl) startConnectRPCServer() {
 
 	server := &http.Server{
 		Addr:              s.cfg.addr,
-		Handler:           corsHandler(h2c.NewHandler(mux, &http2.Server{})),
+		Handler:           corsHandler(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	server.Protocols = new(http.Protocols)
+	server.Protocols.SetHTTP1(true)
+	server.Protocols.SetUnencryptedHTTP2(true)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Error("error starting server", log.ErrorField(err))

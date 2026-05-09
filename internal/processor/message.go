@@ -8,10 +8,6 @@ import (
 	"github.com/mpapenbr/go-racelogger/log"
 )
 
-func MessageManifest() []string {
-	return []string{"type", "subType", "carIdx", "carNum", "carClass", "msg"}
-}
-
 type MessageProc struct {
 	carDriverProc *CarDriverProc
 	bufferGen     []GenericMessage
@@ -87,23 +83,6 @@ func (p *MessageProc) RecordingDone() {
 		SubType: racestatev1.MessageSubType_MESSAGE_SUB_TYPE_RACE_CONTROL,
 		Msg:     "End of recording",
 	})
-}
-
-func (p *MessageProc) CreatePayloadWamp() [][]interface{} {
-	payload := make([][]interface{}, len(p.bufferGen))
-	manifest := MessageManifest()
-	createMessage := func(msgData GenericMessage) []interface{} {
-		ret := make([]interface{}, len(manifest))
-
-		for idx, attr := range manifest {
-			ret[idx] = msgData[attr]
-		}
-		return ret
-	}
-	for i, c := range p.bufferGen {
-		payload[i] = createMessage(c)
-	}
-	return payload
 }
 
 func (p *MessageProc) CreatePayload() []*racestatev1.Message {
