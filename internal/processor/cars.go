@@ -53,30 +53,6 @@ type finishMarker struct {
 	ref    float64 // lap + trackPos at the time the checkered flag was waved
 }
 
-//nolint:unused // used for reference
-var oldBaseAttributes = []string{
-	"state",
-	"carIdx",
-	"carNum",
-	"userName",
-	"teamName",
-	"car",
-	"carClass",
-	"pos",
-	"pic",
-	"lap",
-	"lc",
-	"gap",
-	"interval",
-	"trackPos",
-	"speed",
-	"dist",
-	"pitstops",
-	"stintLap",
-	"last",
-	"best",
-}
-
 // this will become the new baseAttributes later. "static" data will be removed
 var baseAttributes = []string{
 	"state",
@@ -228,6 +204,7 @@ func (p *CarProc) Process() {
 			p.carLookup[idx] = carData
 		}
 		carData.PreProcess(p.api)
+		//nolint:govet // unknown message type parameter inference is not yet supported
 		if slices.Contains([]string{CarStatePit, CarStateRun, CarStateSlow}, carData.state) {
 			driver := p.carDriverProc.GetCurrentDriver(int32(idx))
 			speed := p.calcSpeed(carData)
@@ -540,6 +517,7 @@ func (p *CarProc) markBestLaps() {
 		}
 	}
 
+	//nolint:govet // unknown message type parameter inference is not yet supported
 	slices.SortStableFunc(all, sortByBestLap)
 	if false {
 		debugBest("All", all)
@@ -630,6 +608,7 @@ func (p *CarProc) getInCurrentRaceOrder() []*CarData {
 				invalidPos = append(invalidPos, item)
 			}
 		}
+		//nolint:govet // unknown message type parameter inference is not yet supported
 		slices.SortStableFunc(validPos, raceEndingOrder)
 
 		work = make([]*CarData, 0)

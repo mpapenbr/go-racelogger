@@ -1,4 +1,4 @@
-//nolint:funlen // by design for tests
+//nolint:funlen,goconst // by design for tests
 package recorder
 
 import (
