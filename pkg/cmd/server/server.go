@@ -56,7 +56,8 @@ func runServer(cmdCtx context.Context) {
 		server.WithGrpcConn(conn),
 		server.WithAddr(config.DefaultCliArgs().ServerServiceAddr),
 		server.WithBackendCheckInterval(config.DefaultCliArgs().BackendCheckInterval),
-		server.WithLogger(log.GetFromContext(myCtx).Named("server")))
+		server.WithLogger(log.GetFromContext(myCtx).Named("server")),
+	)
 	if err != nil {
 		log.Error("Could not create server", log.ErrorField(err))
 		return

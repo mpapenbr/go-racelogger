@@ -80,7 +80,8 @@ func (d *CarDriverProc) init(y *yaml.IrsdkYaml) {
 			d.byCarClassIDLookup[int32(v.CarClassID)] = []yaml.Drivers{newEntry}
 		} else {
 			d.byCarClassIDLookup[int32(v.CarClassID)] = append(
-				d.byCarClassIDLookup[int32(v.CarClassID)], newEntry)
+				d.byCarClassIDLookup[int32(v.CarClassID)], newEntry,
+			)
 		}
 		d.latestDriverNames[int32(v.CarIdx)] = v.UserName
 		d.reportChange(int32(v.CarIdx))

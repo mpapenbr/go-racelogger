@@ -144,7 +144,8 @@ func (s *SpeedmapProc) ComputeDeltaTime(
 	} else {
 		chunkData = append(
 			chunkData,
-			s.carClassLookup[carClassID][idxCurrentCar:idxCarInFront+1]...)
+			s.carClassLookup[carClassID][idxCurrentCar:idxCarInFront+1]...,
+		)
 	}
 	if len(chunkData) == 0 {
 		return 0
@@ -176,7 +177,7 @@ func (s *SpeedmapProc) ComputeDeltaTime(
 
 	// for the last item: calculate the time from start of chunk to trackPosCarInFront
 	metersFromStartOfChunk := trackPosCarInFront*float64(s.gpd.TrackInfo.Length) -
-		(float64(idxCarInFront * s.chunkSize))
+		float64(idxCarInFront*s.chunkSize)
 	delta = metersFromStartOfChunk / chunkData[len(chunkData)-1].avg * 3.6
 	totalDelta += delta
 	return totalDelta

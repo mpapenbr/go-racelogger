@@ -155,7 +155,8 @@ func (s *serverImpl) startConnectRPCServer() {
 	s.l.Debug("Starting connect-RPC server")
 	mux := http.NewServeMux()
 	path, handler := raceloggerv1connect.NewRaceloggerServiceHandler(
-		NewRaceloggerServiceConnectRPC(s))
+		NewRaceloggerServiceConnectRPC(s),
+	)
 	mux.Handle(path, handler)
 
 	// Configure CORS (otherwise browser will not allow requests)
@@ -181,7 +182,8 @@ func (s *serverImpl) startConnectRPCServer() {
 
 	// just to ease checks via grpcurl or similar tools
 	reflector := grpcreflect.NewStaticReflector(
-		raceloggerv1connect.RaceloggerServiceName)
+		raceloggerv1connect.RaceloggerServiceName,
+	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 

@@ -229,7 +229,10 @@ formatters:
     gofmt:
       simplify: true
     gofumpt:
-      extra-rules: true
+      extra:
+        group-params: true
+        clothe-returns: true
+        balance-calls: true
     goimports:
       local-prefixes:
         - github.com/mpapenbr/go-racelogger

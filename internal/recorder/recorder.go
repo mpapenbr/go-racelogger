@@ -140,11 +140,13 @@ func (r *Recorder) Start() {
 						log.String("name", r.rl.GetSessionName(nextSessionNum)))
 					raceIndex++ // increment our own race index
 					name, descr := computeNameAndDescription(
-						r.eventNames, r.eventDescriptions, raceIndex)
+						r.eventNames, r.eventDescriptions, raceIndex,
+					)
 					if regErr := r.rl.RegisterProviderHeat(
 						name,
 						descr,
-						r.rl.GetSessionName(nextSessionNum)); regErr == nil {
+						r.rl.GetSessionName(nextSessionNum),
+					); regErr == nil {
 						r.rl.StartRecording()
 					} else {
 						r.l.Error("Error registering heat session", log.ErrorField(regErr))
@@ -156,13 +158,15 @@ func (r *Recorder) Start() {
 	go recorderLoop()
 
 	name, descr := computeNameAndDescription(
-		r.eventNames, r.eventDescriptions, raceIndex)
+		r.eventNames, r.eventDescriptions, raceIndex,
+	)
 	if len(r.raceSessions) == 1 {
 		// we only have one race session. standard procedure
 		r.rl = r.createRacelogger()
 		if regErr := r.rl.RegisterProvider(
 			name,
-			descr); regErr == nil {
+			descr,
+		); regErr == nil {
 			r.rl.StartRecording()
 		} else {
 			r.l.Error("Error registering session", log.ErrorField(regErr))
@@ -172,7 +176,8 @@ func (r *Recorder) Start() {
 		if regErr := r.rl.RegisterProviderHeat(
 			name,
 			descr,
-			r.rl.GetSessionName(r.currentSession)); regErr == nil {
+			r.rl.GetSessionName(r.currentSession),
+		); regErr == nil {
 			r.rl.StartRecording()
 		} else {
 			r.l.Error("Error registering heat session", log.ErrorField(regErr))

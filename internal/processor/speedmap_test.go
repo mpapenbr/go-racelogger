@@ -11,7 +11,8 @@ func defaultTestSpeedmapProc() *SpeedmapProc {
 	ret := NewSpeedmapProc(
 		nil, // don't need api for testing
 		10,
-		&GlobalProcessingData{TrackInfo: &trackv1.Track{Length: 100}})
+		&GlobalProcessingData{TrackInfo: &trackv1.Track{Length: 100}},
+	)
 	createChunks := func(avgs []float64) []*ChunkData {
 		chunks := make([]*ChunkData, len(avgs))
 		for i, v := range avgs {

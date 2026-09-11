@@ -172,7 +172,8 @@ func (p *CarProc) newCarData(carIdx int) *CarData {
 		p.carDriverProc,
 		p.pitBoundaryProc,
 		p.gpd,
-		reportLapStatus)
+		reportLapStatus,
+	)
 }
 
 // will be called every tick, we can assume to have valid data (no unexpected -1 values)
@@ -438,7 +439,8 @@ func (p *CarProc) calcDelta() {
 			deltaByCarClassSpeemap := p.speedmapProc.ComputeDeltaTime(
 				carClassID,
 				currentRaceOrder[i].trackPos,
-				car.trackPos)
+				car.trackPos,
+			)
 			if deltaByCarClassSpeemap < 0 {
 				p.log.Warn("Negative delta by speedmap",
 					log.String("carNum", car.carDriverProc.GetCurrentDriver(car.carIdx).CarNumber),
@@ -525,9 +527,11 @@ func (p *CarProc) markBestLaps() {
 
 	for _, car := range all {
 		byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID] = append(
-			byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID], car)
+			byCar[car.carDriverProc.GetCurrentDriver(car.carIdx).CarID], car,
+		)
 		byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID] = append(
-			byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID], car)
+			byClass[car.carDriverProc.GetCurrentDriver(car.carIdx).CarClassID], car,
+		)
 	}
 
 	// reset all marker
