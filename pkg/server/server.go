@@ -151,6 +151,7 @@ func (s *serverImpl) Close() error {
 	return nil
 }
 
+//nolint:funlen // lots of work to do here
 func (s *serverImpl) startConnectRPCServer() {
 	s.l.Debug("Starting connect-RPC server")
 	mux := http.NewServeMux()
@@ -211,7 +212,8 @@ func (s *serverImpl) showStatusUpdate() {
 		select {
 		case <-ticker.C:
 			if !statusEqual(s.status, lastStatus) {
-				s.l.Info("Status update",
+				s.l.Info(
+					"Status update",
 					log.Any("status", s.status),
 				)
 				lastStatus = s.status
