@@ -29,7 +29,7 @@ jobs:
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           # Must be specified without patch version: we always use the latest patch version.
-          version: v2.12
+          version: v2.13
 
           # Optional: golangci-lint command line arguments.
           # args: --issues-exit-code=0

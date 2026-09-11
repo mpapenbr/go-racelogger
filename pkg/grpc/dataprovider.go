@@ -74,7 +74,8 @@ func (dpc *DataProviderClient) RegisterProvider(
 	//nolint:errcheck // by design
 	dpc.msgLogger.Log(req.ProtoReflect())
 	resp, err := dpc.providerClient.RegisterEvent(
-		dpc.prepareContext(context.Background()), &req)
+		dpc.prepareContext(context.Background()), &req,
+	)
 	return resp, err
 }
 
@@ -92,7 +93,8 @@ func (dpc *DataProviderClient) UnregisterProvider(eventKey string) error {
 	//nolint:errcheck // by design
 	dpc.msgLogger.Log(req.ProtoReflect())
 	_, err := dpc.providerClient.UnregisterEvent(
-		dpc.prepareContext(context.Background()), &req)
+		dpc.prepareContext(context.Background()), &req,
+	)
 	return err
 }
 
@@ -103,7 +105,8 @@ func (dpc *DataProviderClient) DeleteEvent(eventKey string) error {
 		}},
 	}
 	_, err := dpc.eventClient.DeleteEvent(
-		dpc.prepareContext(context.Background()), &req)
+		dpc.prepareContext(context.Background()), &req,
+	)
 	return err
 }
 
@@ -147,7 +150,8 @@ func (dpc *DataProviderClient) PublishState(
 	//nolint:errcheck // by design
 	dpc.msgLogger.Log(req.ProtoReflect())
 	_, err := dpc.stateClient.PublishState(
-		dpc.prepareContext(context.Background()), req)
+		dpc.prepareContext(context.Background()), req,
+	)
 	return err
 }
 
@@ -179,7 +183,8 @@ func (dpc *DataProviderClient) PublishDriverData(
 	//nolint:errcheck // by design
 	dpc.msgLogger.Log(req.ProtoReflect())
 	_, err := dpc.stateClient.PublishDriverData(
-		dpc.prepareContext(context.Background()), req)
+		dpc.prepareContext(context.Background()), req,
+	)
 	return err
 }
 
@@ -211,7 +216,8 @@ func (dpc *DataProviderClient) PublishSpeedmap(
 	//nolint:errcheck // by design
 	dpc.msgLogger.Log(req.ProtoReflect())
 	_, err := dpc.stateClient.PublishSpeedmap(
-		dpc.prepareContext(context.Background()), req)
+		dpc.prepareContext(context.Background()), req,
+	)
 	return err
 }
 
@@ -243,6 +249,7 @@ func (dpc *DataProviderClient) PublishEventExtraInfo(
 	//nolint:errcheck // by design
 	dpc.msgLogger.Log(req.ProtoReflect())
 	_, err := dpc.stateClient.PublishEventExtraInfo(
-		dpc.prepareContext(context.Background()), req)
+		dpc.prepareContext(context.Background()), req,
+	)
 	return err
 }

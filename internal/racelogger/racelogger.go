@@ -334,7 +334,8 @@ func (r *Racelogger) init() bool {
 	initSim := make(chan bool, 1)
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		r.config.waitForServicesTimeout)
+		r.config.waitForServicesTimeout,
+	)
 	defer cancel()
 	r.log.Debug("Waiting for iRacing simulation to be ready")
 	go r.initConnectionToSim(ctx, initSim)

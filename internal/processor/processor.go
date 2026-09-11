@@ -156,7 +156,8 @@ func NewProcessor(
 		api,
 		carProc,
 		messageProc,
-		nil)
+		nil,
+	)
 	ret := Processor{
 		api:                  api,
 		options:              opts,
@@ -203,7 +204,8 @@ func (p *Processor) init() {
 				Exit:  float32(p.pitBoundaryProc.pitExit.middle),
 				LaneLength: pitLaneLength(
 					float32(p.pitBoundaryProc.pitEntry.middle),
-					float32(p.pitBoundaryProc.pitExit.middle)),
+					float32(p.pitBoundaryProc.pitExit.middle),
+				),
 			}
 			p.raceProc.carProc.gpd.TrackInfo.PitInfo = &pitInfo
 
