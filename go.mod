@@ -3,7 +3,7 @@ module github.com/mpapenbr/go-racelogger
 go 1.27
 
 require (
-	buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.21.0-20251019125030-8cb75f92a51d.1
+	buf.build/gen/go/mpapenbr/iracelog/connectrpc/go v1.21.1-20251019125030-8cb75f92a51d.1
 	buf.build/gen/go/mpapenbr/iracelog/grpc/go v1.6.2-20251019125030-8cb75f92a51d.1
 	buf.build/gen/go/mpapenbr/iracelog/protocolbuffers/go v1.36.12-20251019125030-8cb75f92a51d.2
 	connectrpc.com/connect v1.21.1
